@@ -1,5 +1,5 @@
 import { fixtureProperty } from '@gnolith/waystone/fixtures';
-import { LiveEntity } from '../../live-entity';
+import { FixtureEntity } from '../../fixture-entity';
 
 export default async function PropertyRoute({
   params,
@@ -7,5 +7,6 @@ export default async function PropertyRoute({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <LiveEntity id={id} fallback={fixtureProperty} property />;
+  void id;
+  return <FixtureEntity entity={fixtureProperty} property />;
 }

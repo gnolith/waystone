@@ -57,7 +57,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run verify:package && npm run budgets && npm run consumer:check",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run verify:package && npm run boundary:check && npm run budgets && npm run consumer:check",
+    "boundary:check": "node scripts/check-consumer-boundary.mjs",
     "consumer:check": "node scripts/check-consumer.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

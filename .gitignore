@@ -4,6 +4,5 @@ coverage/
 reports/
 *.tsbuildinfo
 *.tgz
-!examples/codex-site-canary/vendor/gnolith-workshop-0.1.0.tgz
 .env
 .env.*

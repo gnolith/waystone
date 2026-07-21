@@ -8,7 +8,7 @@ Waystone is a UI and protocol-consumer package. It does not access D1 or R2, pro
 
 ## Status
 
-Waystone 0.1 is a pre-1.0 public API. Its canary consumes Taproot's canonical protocol, exercises live D1 mutations and revisions, queries Diamond's RDF projection, and registers Workshop's UI plugin. See [the dependency record](docs/taproot-dependencies.md) and [release evidence](docs/release-evidence.md).
+Waystone 0.1 is a pre-1.0 public API. Its isolated consumer fixture installs the exact package archive, builds representative routes, server-renders the public UI surfaces, and exercises the package-owned fixture plugin. Complete Site assembly and hosted acceptance belong to the Codex agent creating that Site. See [the dependency record](docs/taproot-dependencies.md) and [release evidence](docs/release-evidence.md).
 
 ## Install
 
@@ -74,7 +74,7 @@ Generated routes should create the client and registry once at module scope. Aut
 - [Components and knowledge workflows](docs/components.md)
 - [Styling and public design tokens](docs/styling.md)
 - [Accessibility](docs/accessibility.md)
-- [Codex Sites and vinext compatibility](docs/codex-sites.md)
+- [Codex Sites and vinext integration](docs/codex-sites.md)
 - [Upgrade policy](docs/upgrades.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Release checklist](docs/releasing.md)
@@ -93,7 +93,7 @@ npm pack --dry-run
 
 - React and React DOM: `>=19 <20`
 - Node for development: `>=22`
-- Production: ESM, Web APIs, React 19, Vite/vinext, Cloudflare Workers without Node compatibility flags
+- Runtime exports: ESM and Web APIs, with package verification rejecting Node and Cloudflare imports reachable from public entry points
 - TypeScript consumers: strict projects on currently supported TypeScript 5.9+
 - Taproot: `>=0.1.0-rc.0 <0.2.0`
 

@@ -4,6 +4,6 @@ Waystone supports `@gnolith/taproot >=0.1.0-rc.0 <0.2.0` as a peer. The package 
 
 Taproot uses canonical Wikibase JSON while Waystone uses a UI-oriented display model. The root export provides explicit adapters for stored entity envelopes, claims, snaks, references, search pages, and revisions. `createWaystoneClient()` applies those adapters to canonical Taproot API responses by default, while custom decoders remain available for installer-specific protocols.
 
-The Codex Sites canary owns the server integration boundary. Its generated-style handlers initialize Taproot against managed D1, enforce attribution and `If-Match` revisions, expose search/entity/revision operations, and project the same data through Diamond for read-only SPARQL. Waystone itself never imports those handlers.
+The generated Site owns the server integration boundary. Its handlers may initialize Taproot against managed persistence, enforce attribution and `If-Match` revisions, expose search/entity/revision operations, and project data through Diamond for read-only SPARQL. Waystone itself does not import those handlers or assemble a complete Site.
 
-Release verification requires both a successful live mutation and a deliberately stale mutation returning `409`, followed by revision and SPARQL reads of the resulting data. Fixture-only behavior is not accepted for this gate.
+Waystone verifies its adapters against canonical protocol fixtures and package-owned mock behavior. The Codex agent creating a Site owns live mutation, stale-conflict, revision, and SPARQL acceptance against that Site's selected artifacts and resources.
