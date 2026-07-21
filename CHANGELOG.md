@@ -10,6 +10,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 - Isolated package verification from sibling-repository source trees and legacy Workshop archives.
 - Consolidated npm publication behind the protected GitHub Release publication event and added release-candidate guards.
+- Adapted Workshop-shaped entity panels from Waystone's canonical `entity` prop to Workshop's `entityId` contract at the registry boundary.
+- Clarified that headless and process-based consumers compose non-UI packages without importing Waystone.
 
 ### Added
 

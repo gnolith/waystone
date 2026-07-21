@@ -6,6 +6,8 @@
 
 Waystone is a UI and protocol-consumer package. It does not access D1 or R2, project RDF, implement authentication or authorization, create App Router files, run MCP tools, or import Workshop. The host Site owns those systems and composes Waystone with its generated HTTP routes.
 
+Headless and process-based consumers compose Gnolith's non-UI packages directly and must not import Waystone. Waystone belongs only in browser and rendered Site surfaces; persistence, process lifecycle, CLI, and container assembly remain outside this package.
+
 ## Status
 
 Waystone 0.1 is a pre-1.0 public API. Its isolated consumer fixture installs the exact package archive, builds representative routes, server-renders the public UI surfaces, and exercises the package-owned fixture plugin. Complete Site assembly and hosted acceptance belong to the Codex agent creating that Site. See [the dependency record](docs/taproot-dependencies.md) and [release evidence](docs/release-evidence.md).

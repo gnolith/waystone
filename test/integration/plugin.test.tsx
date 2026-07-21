@@ -5,7 +5,11 @@ import {
   WaystonePluginProvider,
 } from '../../src/plugin-components.js';
 import { createWaystoneRegistry } from '../../src/plugin-registry.js';
-import { fixtureFailingPlugin, fixturePlugin } from '../../src/fixture-data.js';
+import {
+  fixtureFailingPlugin,
+  fixtureItem,
+  fixturePlugin,
+} from '../../src/fixture-data.js';
 
 describe('plugin contract', () => {
   it('sorts contributions deterministically and exposes static routes', () => {
@@ -116,5 +120,36 @@ describe('plugin contract', () => {
       path: '/workshop/tasks',
       requiresClient: true,
     });
+  });
+  it('adapts the rendered Workshop entity panel to entityId', () => {
+    function WorkshopEntityPanel({ entityId }: { entityId?: string }) {
+      return <p>Workshop entity: {entityId ?? 'missing'}</p>;
+    }
+    const registry = createWaystoneRegistry([
+      {
+        id: 'workshop',
+        name: 'Workshop',
+        entityPanels: [
+          {
+            id: 'workshop-related',
+            title: 'Related tasks',
+            component: WorkshopEntityPanel,
+          },
+        ],
+      },
+    ]);
+
+    render(
+      <WaystonePluginProvider registry={registry}>
+        <WaystoneExtensionPoint name="entityPanels" entity={fixtureItem} />
+      </WaystonePluginProvider>,
+    );
+
+    expect(
+      screen.getByText(`Workshop entity: ${fixtureItem.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Workshop entity: missing'),
+    ).not.toBeInTheDocument();
   });
 });
