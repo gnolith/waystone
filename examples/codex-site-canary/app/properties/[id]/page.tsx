@@ -1,13 +1,11 @@
-'use client';
-
 import { fixtureProperty } from '@gnolith/waystone/fixtures';
-import { GnolithPropertyPage } from '@gnolith/waystone/site';
-import { CanaryShell } from '../../waystone';
+import { LiveEntity } from '../../live-entity';
 
-export default function PropertyRoute() {
-  return (
-    <CanaryShell currentPath="/entities">
-      <GnolithPropertyPage entity={fixtureProperty} />
-    </CanaryShell>
-  );
+export default async function PropertyRoute({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return <LiveEntity id={id} fallback={fixtureProperty} property />;
 }

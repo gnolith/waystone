@@ -13,6 +13,16 @@ import type {
   EntityRevisionPage,
   CreateEntityInput,
 } from './model.js';
+import {
+  fromTaprootEntity,
+  fromTaprootRevisionMetadata,
+  fromTaprootSearchPage,
+  type TaprootPage,
+  type TaprootRevisionEntry,
+  type TaprootSearchResult,
+  type TaprootStoredEntity,
+  type TaprootWikibaseEntity,
+} from './taproot-adapter.js';
 
 export interface WaystoneApiPaths {
   entities: string;
@@ -31,6 +41,9 @@ export interface CreateWaystoneClientOptions {
   paths?: Partial<WaystoneApiPaths>;
   onRequestError?: (error: WaystoneRequestError) => void;
   observability?: WaystoneObservability;
+  decodeEntity?: (value: unknown) => WikibaseEntity;
+  decodeSearch?: (value: unknown) => EntitySearchResult;
+  decodeRevisions?: (value: unknown) => EntityRevisionPage;
 }
 
 const defaultPaths: WaystoneApiPaths = {
@@ -86,6 +99,44 @@ async function readError(response: Response): Promise<WaystoneRequestError> {
   });
 }
 
+function record(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function defaultEntityDecoder(value: unknown): WikibaseEntity {
+  const body = record(value);
+  const nested = record(body?.entity);
+  if (nested && 'claims' in nested && 'lastrevid' in nested) {
+    if ('deletedAt' in (body ?? {}) || 'redirectTo' in (body ?? {}))
+      return fromTaprootEntity(body as unknown as TaprootStoredEntity);
+    return fromTaprootEntity(nested as unknown as TaprootWikibaseEntity);
+  }
+  if (body && 'claims' in body && 'lastrevid' in body)
+    return fromTaprootEntity(body as unknown as TaprootWikibaseEntity);
+  return value as WikibaseEntity;
+}
+
+function defaultSearchDecoder(value: unknown): EntitySearchResult {
+  const body = record(value);
+  if (body && Array.isArray(body.items))
+    return fromTaprootSearchPage(value as TaprootPage<TaprootSearchResult>);
+  return value as EntitySearchResult;
+}
+
+function defaultRevisionsDecoder(value: unknown): EntityRevisionPage {
+  const body = record(value);
+  if (body && Array.isArray(body.items)) {
+    const page = value as TaprootPage<TaprootRevisionEntry>;
+    return {
+      revisions: page.items.map(fromTaprootRevisionMetadata),
+      ...(page.cursor ? { nextCursor: page.cursor } : {}),
+    };
+  }
+  return value as EntityRevisionPage;
+}
+
 export function createWaystoneClient(
   options: CreateWaystoneClientOptions = {},
 ): WaystoneClient {
@@ -95,6 +146,9 @@ export function createWaystoneClient(
       'createWaystoneClient requires a fetch implementation in this runtime.',
     );
   const paths = { ...defaultPaths, ...options.paths };
+  const decodeEntity = options.decodeEntity ?? defaultEntityDecoder;
+  const decodeSearch = options.decodeSearch ?? defaultSearchDecoder;
+  const decodeRevisions = options.decodeRevisions ?? defaultRevisionsDecoder;
 
   async function request<T>(
     path: string,
@@ -158,63 +212,87 @@ export function createWaystoneClient(
         if (input.type) query.set('type', input.type);
         if (input.cursor) query.set('cursor', input.cursor);
         if (input.limit !== undefined) query.set('limit', String(input.limit));
-        return request<EntitySearchResult>(
+        return request<unknown>(
           `${paths.entities}?${query}`,
           {},
           requestOptions,
-        );
+        ).then(decodeSearch);
       },
       get(id, requestOptions) {
-        return request<WikibaseEntity>(paths.entity(id), {}, requestOptions);
+        return request<unknown>(paths.entity(id), {}, requestOptions).then(
+          decodeEntity,
+        );
       },
       getRevision(id, revision, requestOptions) {
-        return request<WikibaseEntity>(
+        return request<unknown>(
           paths.revision(id, revision),
           {},
           requestOptions,
-        );
+        ).then(decodeEntity);
       },
       listRevisions(id, requestOptions) {
-        return request<EntityRevisionPage>(
-          paths.revisions(id),
-          {},
-          requestOptions,
+        return request<unknown>(paths.revisions(id), {}, requestOptions).then(
+          decodeRevisions,
         );
       },
       async create(
         input: CreateEntityInput,
         mutationOptions?: MutationOptions,
       ) {
-        const entity = await request<WikibaseEntity>(
-          paths.entities,
-          mutation('POST', input, mutationOptions),
-          mutationOptions,
-        );
-        options.observability?.onMutationResult?.({
-          entityId: entity.id,
-          operation: 'create',
-          ok: true,
-        });
-        return entity;
+        try {
+          const value = await request<unknown>(
+            paths.entities,
+            mutation('POST', input, mutationOptions),
+            mutationOptions,
+          );
+          const entity = decodeEntity(value);
+          options.observability?.onMutationResult?.({
+            entityId: entity.id,
+            operation: 'create',
+            ok: true,
+          });
+          return entity;
+        } catch (cause) {
+          options.observability?.onMutationResult?.({
+            operation: 'create',
+            ok: false,
+            ...(cause instanceof WaystoneRequestError && cause.requestId
+              ? { requestId: cause.requestId }
+              : {}),
+          });
+          throw cause;
+        }
       },
       async mutate(
         id,
         input: EntityMutationInput,
         mutationOptions?: MutationOptions,
       ) {
-        const entity = await request<WikibaseEntity>(
-          paths.entity(id),
-          mutation('PATCH', input, mutationOptions),
-          mutationOptions,
-        );
-        options.observability?.onMutationResult?.({
-          entityId: entity.id,
-          operation: input.operations
-            .map((operation) => operation.op)
-            .join(','),
-          ok: true,
-        });
-        return entity;
+        const operation = input.operations.map((item) => item.op).join(',');
+        try {
+          const value = await request<unknown>(
+            paths.entity(id),
+            mutation('PATCH', input, mutationOptions),
+            mutationOptions,
+          );
+          const entity = decodeEntity(value);
+          options.observability?.onMutationResult?.({
+            entityId: entity.id,
+            operation,
+            ok: true,
+          });
+          return entity;
+        } catch (cause) {
+          options.observability?.onMutationResult?.({
+            entityId: id,
+            operation,
+            ok: false,
+            ...(cause instanceof WaystoneRequestError && cause.requestId
+              ? { requestId: cause.requestId }
+              : {}),
+          });
+          throw cause;
+        }
       },
     },
     sparql: {

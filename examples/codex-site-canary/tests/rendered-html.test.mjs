@@ -36,3 +36,11 @@ for (const [path, expected] of [
     );
   });
 }
+
+test('server-renders the real Workshop UI plugin', async () => {
+  const response = await render('/');
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Research Workshop/);
+  assert.match(html, /href="\/workshop\/tasks"/);
+});

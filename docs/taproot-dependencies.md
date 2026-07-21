@@ -1,13 +1,9 @@
-# Taproot dependency record
+# Taproot integration
 
-As of 2026-07-20, `@gnolith/taproot` is a private `0.0.0` scaffold with no public model/protocol exports or generated HTTP APIs. Waystone therefore defines a structural pre-1.0 protocol boundary and complete UI boundary, but cannot truthfully verify live entity browsing, live mutation/conflict behavior, revision history, or Taproot projection compatibility.
+Waystone supports `@gnolith/taproot >=0.1.0-rc.0 <0.2.0` as a peer. The package imports Taproot only as types from its server-safe root; Waystone remains free of D1, Diamond, Drizzle, and Cloudflare runtime dependencies.
 
-Before Waystone is production `GO`:
+Taproot uses canonical Wikibase JSON while Waystone uses a UI-oriented display model. The root export provides explicit adapters for stored entity envelopes, claims, snaks, references, search pages, and revisions. `createWaystoneClient()` applies those adapters to canonical Taproot API responses by default, while custom decoders remain available for installer-specific protocols.
 
-1. Taproot publishes browser-safe entity, search, revision, mutation, validation, and error types.
-2. Waystone replaces or proves structural identity for its temporary protocol models and declares the supported Taproot range.
-3. Generated Site handlers are installed in the canary and all client methods run against them.
-4. A real entity mutation and deliberately stale expected-revision mutation prove success and conflict behavior.
-5. SPARQL validation, dry run, and query run against the live Site APIs.
+The Codex Sites canary owns the server integration boundary. Its generated-style handlers initialize Taproot against managed D1, enforce attribution and `If-Match` revisions, expose search/entity/revision operations, and project the same data through Diamond for read-only SPARQL. Waystone itself never imports those handlers.
 
-No mock result is accepted as evidence for these live gates.
+Release verification requires both a successful live mutation and a deliberately stale mutation returning `409`, followed by revision and SPARQL reads of the resulting data. Fixture-only behavior is not accepted for this gate.

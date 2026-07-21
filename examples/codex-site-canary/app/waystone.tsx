@@ -1,10 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import {
-  createMockWaystoneClient,
-  fixturePlugin,
-} from '@gnolith/waystone/fixtures';
+import { createWaystoneClient } from '@gnolith/waystone/client';
+import { fixturePlugin } from '@gnolith/waystone/fixtures';
+import { workshopPlugin } from '@gnolith/workshop/ui';
 import {
   createWaystoneRegistry,
   type WaystonePlugin,
@@ -40,8 +39,12 @@ const canaryPlugin: WaystonePlugin = {
   ],
 };
 
-export const client = createMockWaystoneClient();
-export const registry = createWaystoneRegistry([fixturePlugin, canaryPlugin]);
+export const client = createWaystoneClient();
+export const registry = createWaystoneRegistry([
+  fixturePlugin,
+  workshopPlugin,
+  canaryPlugin,
+]);
 
 export function CanaryShell({
   currentPath,

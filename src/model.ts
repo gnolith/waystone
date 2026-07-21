@@ -1,21 +1,17 @@
 import type { ReactNode } from 'react';
+import type {
+  EntityDatatype as TaprootEntityDatatype,
+  EntityId as TaprootEntityId,
+  EntityType as TaprootEntityType,
+  Rank as TaprootRank,
+  SnakType as TaprootSnakType,
+} from '@gnolith/taproot';
 
-export type EntityId = `Q${number}` | `P${number}`;
-export type EntityType = 'item' | 'property';
-export type SnakType = 'value' | 'somevalue' | 'novalue';
-export type StatementRank = 'preferred' | 'normal' | 'deprecated';
-export type WaystoneDatatype =
-  | 'wikibase-item'
-  | 'wikibase-property'
-  | 'string'
-  | 'external-id'
-  | 'url'
-  | 'commonsMedia'
-  | 'monolingualtext'
-  | 'time'
-  | 'quantity'
-  | 'globe-coordinate'
-  | (string & {});
+export type EntityId = TaprootEntityId;
+export type EntityType = TaprootEntityType;
+export type SnakType = TaprootSnakType;
+export type StatementRank = TaprootRank;
+export type WaystoneDatatype = TaprootEntityDatatype | (string & {});
 
 export interface TermMap {
   [language: string]: string | undefined;

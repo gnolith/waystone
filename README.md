@@ -8,7 +8,7 @@ Waystone is a UI and protocol-consumer package. It does not access D1 or R2, pro
 
 ## Status
 
-Waystone 0.1 is a pre-1.0 public API. The package implementation and mock-backed canary are usable; live production release is blocked until Taproot publishes its browser-safe protocol and generated HTTP APIs. See [the dependency record](docs/taproot-dependencies.md).
+Waystone 0.1 is a pre-1.0 public API. Its canary consumes Taproot's canonical protocol, exercises live D1 mutations and revisions, queries Diamond's RDF projection, and registers Workshop's UI plugin. See [the dependency record](docs/taproot-dependencies.md) and [release evidence](docs/release-evidence.md).
 
 ## Install
 
@@ -95,7 +95,7 @@ npm pack --dry-run
 - Node for development: `>=22`
 - Production: ESM, Web APIs, React 19, Vite/vinext, Cloudflare Workers without Node compatibility flags
 - TypeScript consumers: strict projects on currently supported TypeScript 5.9+
-- Taproot: no released protocol range yet; the structural 0.1 boundary is documented pending its first public release
+- Taproot: `>=0.1.0-rc.0 <0.2.0`
 
 ## Security
 

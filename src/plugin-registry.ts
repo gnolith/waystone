@@ -5,10 +5,93 @@ import type {
   WaystoneNavigationContribution,
   WaystoneOnboardingContribution,
   WaystonePlugin,
+  WaystonePluginInput,
   WaystoneRegistry,
   WaystoneRouteDescriptor,
   WaystoneSettingsContribution,
 } from './plugin-contracts.js';
+import type { ComponentType } from 'react';
+
+function contextualComponent<T>(
+  component: ComponentType<Record<string, never>>,
+): ComponentType<T> {
+  return component as unknown as ComponentType<T>;
+}
+
+function isWorkshopShape(
+  plugin: WaystonePluginInput,
+): plugin is import('./plugin-contracts.js').WorkshopCompatibleWaystonePlugin {
+  return 'name' in plugin;
+}
+
+function normalizePlugin(plugin: WaystonePluginInput): WaystonePlugin {
+  if (!isWorkshopShape(plugin)) return plugin;
+  return {
+    id: plugin.id,
+    label: plugin.name,
+    ...(plugin.version ? { version: plugin.version } : {}),
+    ...(plugin.navigation ? { navigation: plugin.navigation } : {}),
+    ...(plugin.dashboardPanels
+      ? {
+          dashboardPanels: plugin.dashboardPanels.map((item) => ({
+            id: item.id,
+            label: item.title,
+            component: contextualComponent<
+              import('./plugin-contracts.js').WaystonePluginContext
+            >(item.component),
+          })),
+        }
+      : {}),
+    ...(plugin.entityPanels
+      ? {
+          entityPanels: plugin.entityPanels.map((item) => ({
+            id: item.id,
+            label: item.title,
+            component: contextualComponent<
+              import('./plugin-contracts.js').WaystonePluginContext & {
+                entity: import('./model.js').WikibaseEntity;
+              }
+            >(item.component),
+          })),
+        }
+      : {}),
+    ...(plugin.onboarding
+      ? {
+          onboardingSteps: plugin.onboarding.map((item) => ({
+            id: item.id,
+            label: item.title,
+            component: contextualComponent<
+              import('./plugin-contracts.js').WaystonePluginContext & {
+                onComplete?: () => void;
+              }
+            >(item.component),
+          })),
+        }
+      : {}),
+    ...(plugin.settingsPanels
+      ? {
+          settingsPanels: plugin.settingsPanels.map((item) => ({
+            id: item.id,
+            label: item.title,
+            component: contextualComponent<
+              import('./plugin-contracts.js').WaystonePluginContext
+            >(item.component),
+          })),
+        }
+      : {}),
+    ...(plugin.routes
+      ? {
+          routeDescriptors: plugin.routes.map((item) => ({
+            id: `${item.id}-route`,
+            label: item.id,
+            path: item.path,
+            exportName: item.component.name || item.id,
+            requiresClient: true,
+          })),
+        }
+      : {}),
+  };
+}
 
 function assertId(value: string, kind: string): void {
   if (!/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(value))
@@ -38,8 +121,9 @@ function collect<T extends { id: string; order?: number }>(
   );
 }
 export function createWaystoneRegistry(
-  plugins: readonly WaystonePlugin[] = [],
+  definitions: readonly WaystonePluginInput[] = [],
 ): WaystoneRegistry {
+  const plugins = definitions.map(normalizePlugin);
   const seen = new Set<string>();
   const contributionIds = new Set<string>();
   const contributionKeys = [

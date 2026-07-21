@@ -26,18 +26,28 @@ describe('createWaystoneClient', () => {
     );
   });
   it('sends expected revision and preserves conflicts and request IDs', async () => {
+    const onMutationResult = vi.fn();
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ message: 'revision changed' }), {
         status: 409,
         headers: { 'x-request-id': 'req-7' },
       }),
     );
-    const client = createWaystoneClient({ fetch: fetcher });
+    const client = createWaystoneClient({
+      fetch: fetcher,
+      observability: { onMutationResult },
+    });
     await expect(
       client.entities.mutate('Q1', { operations: [] }, { expectedRevision: 6 }),
     ).rejects.toMatchObject({ kind: 'conflict', requestId: 'req-7' });
     const init = fetcher.mock.calls[0]![1];
     expect(new Headers(init?.headers).get('if-match')).toBe('"6"');
+    expect(onMutationResult).toHaveBeenCalledWith({
+      entityId: 'Q1',
+      operation: '',
+      ok: false,
+      requestId: 'req-7',
+    });
   });
   it('normalizes network failures', async () => {
     const client = createWaystoneClient({
@@ -81,6 +91,34 @@ describe('createWaystoneClient', () => {
       entityId: 'Q1',
       operation: 'set-label',
       ok: true,
+    });
+  });
+  it('decodes canonical Taproot envelopes returned by generated Site handlers', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        entity: {
+          id: 'Q9',
+          type: 'item',
+          labels: { en: { language: 'en', value: 'Live record' } },
+          descriptions: {},
+          aliases: {},
+          claims: {},
+          sitelinks: {},
+          lastrevid: 3,
+          modified: '2026-07-20T00:00:00Z',
+        },
+        deletedAt: null,
+        redirectTo: null,
+      }),
+    );
+    const entity = await createWaystoneClient({ fetch: fetcher }).entities.get(
+      'Q9',
+    );
+    expect(entity).toMatchObject({
+      id: 'Q9',
+      labels: { en: 'Live record' },
+      revision: 3,
+      statements: {},
     });
   });
 });

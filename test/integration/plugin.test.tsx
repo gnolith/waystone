@@ -62,4 +62,59 @@ describe('plugin contract', () => {
     expect(onPluginError).toHaveBeenCalledOnce();
     consoleError.mockRestore();
   });
+  it('normalizes the public Workshop 0.1 structural contract', () => {
+    const EmptyPanel = () => <p>Workshop panel</p>;
+    const workshopPlugin = {
+      id: 'workshop',
+      name: 'Workshop',
+      navigation: [
+        {
+          id: 'workshop-tasks',
+          label: 'Tasks',
+          href: '/workshop/tasks',
+          capability: 'read',
+        },
+      ],
+      routes: [
+        {
+          id: 'workshop-tasks',
+          path: '/workshop/tasks',
+          component: EmptyPanel,
+        },
+      ],
+      dashboardPanels: [
+        { id: 'workshop-dashboard', title: 'Workshop', component: EmptyPanel },
+      ],
+      onboarding: [
+        { id: 'workshop-seed', title: 'Seed research', component: EmptyPanel },
+      ],
+      settingsPanels: [
+        {
+          id: 'workshop-settings',
+          title: 'Workshop settings',
+          capability: 'admin',
+          component: EmptyPanel,
+        },
+      ],
+      entityPanels: [
+        {
+          id: 'workshop-related',
+          title: 'Related tasks',
+          component: EmptyPanel,
+        },
+      ],
+    } as const;
+    const registry = createWaystoneRegistry([workshopPlugin]);
+    expect(registry.plugins[0]).toMatchObject({
+      id: 'workshop',
+      label: 'Workshop',
+    });
+    expect(registry.onboardingSteps[0]?.contribution.label).toBe(
+      'Seed research',
+    );
+    expect(registry.routeDescriptors[0]?.contribution).toMatchObject({
+      path: '/workshop/tasks',
+      requiresClient: true,
+    });
+  });
 });

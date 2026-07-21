@@ -16,6 +16,7 @@ export interface WaystoneNavigationContribution {
   href: string;
   order?: number;
   iconLabel?: string;
+  capability?: string;
 }
 export interface WaystoneDashboardContribution {
   id: string;
@@ -60,6 +61,43 @@ export interface WaystonePlugin {
   settingsPanels?: readonly WaystoneSettingsContribution[];
   routeDescriptors?: readonly WaystoneRouteDescriptor[];
 }
+type EmptyPluginComponent = ComponentType<Record<string, never>>;
+export interface WorkshopCompatibleWaystonePlugin {
+  id: string;
+  name: string;
+  version?: string;
+  navigation?: readonly (Omit<WaystoneNavigationContribution, 'order'> & {
+    order?: number;
+  })[];
+  routes?: readonly {
+    id: string;
+    path: string;
+    component: EmptyPluginComponent;
+  }[];
+  dashboardPanels?: readonly {
+    id: string;
+    title: string;
+    component: EmptyPluginComponent;
+  }[];
+  onboarding?: readonly {
+    id: string;
+    title: string;
+    component: EmptyPluginComponent;
+  }[];
+  settingsPanels?: readonly {
+    id: string;
+    title: string;
+    capability?: string;
+    component: EmptyPluginComponent;
+  }[];
+  entityPanels?: readonly {
+    id: string;
+    title: string;
+    component: EmptyPluginComponent;
+  }[];
+}
+export type WaystonePluginInput =
+  WaystonePlugin | WorkshopCompatibleWaystonePlugin;
 export type WaystoneExtensionName =
   'dashboardPanels' | 'entityPanels' | 'onboardingSteps' | 'settingsPanels';
 export interface RegisteredContribution<T> {

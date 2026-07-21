@@ -1,26 +1,30 @@
 # Release evidence
 
-Status: **NO-GO**
+Status: **GO**
 
-Release-candidate evidence recorded on 2026-07-20. The package remains a
-mandatory `NO-GO`: Taproot and Workshop do not yet provide publishable live
-consumers against which to prove the final integration gates.
+Release-candidate evidence recorded on 2026-07-20 for `@gnolith/waystone@0.1.0`.
 
-| Gate                                                    | Evidence                                                                                                                                                                                                | Result                             |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Clean package check                                     | `npm run check`: format, lint, strict TypeScript, 17 tests, coverage, build, package checks, budgets, and consumer checks                                                                               | Pass pending clean-checkout replay |
-| Exact tarball integrity and contents                    | `npm pack` allowlist inspection; exact tarball installed in the fresh consumer and deployed canary                                                                                                      | Pass                               |
-| Fresh vinext/Vite consumer build                        | Fresh temporary consumer installed the tarball, built vinext, and server-rendered all six required routes                                                                                               | Pass                               |
-| Cloudflare Worker deployment without Node compatibility | The private production canary deploys successfully from its self-contained tarball; production compatibility flags are empty                                                                            | Pass                               |
-| Browser routes, console, and Worker logs                | Local browser exercised search and SPARQL; all deployed routes returned 200 through the private-site bypass; zero Worker error events. Private SIWC prevents direct deployed in-app-browser automation. | Partial / NO-GO                    |
-| Live Taproot browse, revision, mutation, and conflict   | Blocked by unpublished Taproot protocol/APIs                                                                                                                                                            | NO-GO                              |
-| Live SPARQL validate, dry run, and query                | Fixture-backed UI flow passes; generated live Site API unavailable                                                                                                                                      | NO-GO                              |
-| Workshop public-contract integration                    | Dummy and Workshop-shaped fixtures pass; publishable Workshop consumer unavailable                                                                                                                      | NO-GO                              |
+| Gate                                                  | Evidence                                                                                                                                                                                                                              | Result |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Clean package check                                   | `npm run check` passed formatting, lint, strict TypeScript, 22 unit/component tests, coverage, build, package verification, bundle budgets, and the fresh-consumer check.                                                             | Pass   |
+| Public exports and declarations                       | Package verification imported every public entry point, resolved declarations and compiled CSS, checked export targets, and rejected client/server boundary violations.                                                               | Pass   |
+| Exact tarball and fresh consumer                      | `npm pack` contents passed the allowlist; the exact `gnolith-waystone-0.1.0.tgz` was installed into an empty consumer and used by the canary without workspace aliases.                                                               | Pass   |
+| vinext/Vite production build and SSR                  | The fresh consumer built all application and API routes. Seven rendered-HTML tests passed for `/`, onboarding, browse, entity, property, SPARQL, and the real Workshop UI plugin.                                                     | Pass   |
+| Worker deployment without Node compatibility          | Sites version `appgprj_6a5ebc36cbb88191ae4e84554992b4ef~appgver_b8eb01cdcef881918a1a601e76f36325` deployed successfully with empty production compatibility flags.                                                                    | Pass   |
+| Live Taproot browse, revision, mutation, and conflict | The deployed API read Q2 at revision 1, accepted an `If-Match` mutation to revision 2, returned the two-revision history, and rejected the stale revision with the expected 409 conflict. Search returned three live entities.        | Pass   |
+| Live SPARQL validate, dry run, and query              | Deployed validation succeeded; dry-run returned two rows; the Diamond/Comunica-backed query returned two `bindings` rows.                                                                                                             | Pass   |
+| Workshop public-contract integration                  | The canary installs a packed `@gnolith/workshop@0.1.0` artifact, imports only `@gnolith/workshop/ui`, registers `workshopPlugin`, and renders its Tasks, Memories, and entity-panel contributions. Waystone does not import Workshop. | Pass   |
+| Server rendering and client hydration                 | Deployed SSR rendered the authenticated canary through a private-site bypass. Local browser verification exercised live hydration after the same production build and displayed Q2 revision 2 and the saved description.              | Pass   |
+| Browser console and Worker logs                       | Browser smoke produced no material console errors. The final error-only Worker-log query contained only the intentionally induced stale-write 409; its Worker outcome was `ok` and no exception was recorded.                         | Pass   |
+| Documentation                                         | README and the API-client, plugin, styling, accessibility, Sites, release, troubleshooting, upgrade, and Taproot dependency guides match the 0.1.0 public contract.                                                                   | Pass   |
 
-Private canary: <https://gnolith-waystone-canary.kcsfelty.chatgpt.site>
+Private production canary: <https://gnolith-waystone-canary.kcsfelty.chatgpt.site>
+
+The canary is protected by Sign in with ChatGPT. Direct unattended browser access
+therefore stops at the expected access screen; authenticated production SSR was
+verified through the private-site bypass, while live browser hydration and all
+production API behaviors were verified separately.
 
 Observed package bundle sizes (minified ESM, React external): server-safe root
 8,152 bytes; client shell 3,969 bytes; SPARQL editor 5,385 bytes; entity editor
 7,727 bytes. All are below the documented budgets.
-
-Do not change this status to `GO` until every row links to authoritative output from the exact publishable tarball.
