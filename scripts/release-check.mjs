@@ -71,8 +71,10 @@ requireCondition(
   releaseWorkflow.includes('id-token: write') &&
     releaseWorkflow.includes('environment: npm') &&
     releaseWorkflow.includes('npm publish --access public --provenance') &&
+    releaseWorkflow.includes('NODE_AUTH_TOKEN:') &&
+    releaseWorkflow.includes('secrets.NPM_BOOTSTRAP_TOKEN') &&
     releaseWorkflow.includes('TAG: ${{ github.event.release.tag_name }}'),
-  'Release workflow lacks protected trusted-publishing safeguards.',
+  'Release workflow lacks protected bootstrap publication safeguards.',
 );
 
 const immutableTags = new Map([

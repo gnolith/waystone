@@ -97,7 +97,7 @@ npm pack --dry-run
 - Node for development: `>=22`
 - Runtime exports: ESM and Web APIs, with package verification rejecting Node and Cloudflare imports reachable from public entry points
 - TypeScript consumers: strict projects on currently supported TypeScript 5.9+
-- Taproot: `>=0.1.0-rc.0 <0.2.0`
+- Taproot: `>=0.1.0-rc.0 <0.3.0` (verified with stable `0.2.0`)
 
 ## Security
 

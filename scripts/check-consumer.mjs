@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -20,13 +20,26 @@ function run(args, cwd = process.cwd()) {
   return result.stdout;
 }
 
-const packed = JSON.parse(run(['pack', '--ignore-scripts', '--json']));
-const archive = path.resolve(packed[0].filename);
 const sourceFixture = path.resolve('examples/codex-site-canary');
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'waystone-consumer-'));
 const consumer = path.join(temporaryRoot, 'isolated-consumer');
 
 try {
+  const packed = JSON.parse(
+    run([
+      'pack',
+      '--ignore-scripts',
+      '--json',
+      '--pack-destination',
+      temporaryRoot,
+    ]),
+  );
+  const packedArchive = path.join(
+    temporaryRoot,
+    path.basename(packed[0].filename),
+  );
+  const archive = path.join(temporaryRoot, 'waystone-consumer-candidate.tgz');
+  renameSync(packedArchive, archive);
   cpSync(sourceFixture, consumer, {
     recursive: true,
     filter(source) {
@@ -41,5 +54,4 @@ try {
   );
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
-  rmSync(archive, { force: true });
 }

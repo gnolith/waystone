@@ -26,3 +26,6 @@ jobs:
         env:
           TAG: ${{ github.event.release.tag_name }}
       - run: npm publish --access public --provenance
+        env:
+          # Remove after the first publish and npm trusted-publisher binding.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}

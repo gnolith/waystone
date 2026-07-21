@@ -10,10 +10,13 @@ Waystone is `NO-GO` unless every package-owned mandatory item has current eviden
 - Bundle budgets pass and React is external
 - `npm pack --json` contains only intended artifacts and provenance is enabled
 - Install the exact tarball into a fresh isolated consumer, then build and server-render it with vinext/Vite
+- `prepack` runs the non-recursive package gate; the release workflow's preceding full `npm run check` owns exact-archive consumer verification so npm does not recursively pack itself
 - Exercise the Workshop-shaped fixture through only `@gnolith/waystone/plugin`; do not introduce a Workshop dependency
 - Record package commands, versions, package integrity, consumer build, and SSR results in `docs/release-evidence.md`
 - After authorization, create a new immutable `vX.Y.Z` tag at the verified merge commit; never move or reuse an existing version tag
-- Publish a GitHub Release for that exact tag. The protected `npm` environment and trusted-publishing workflow run only from the `release: published` event; pushing a tag does not publish npm
+- For the first publication only, store a short-lived npm automation token as the protected `npm` environment secret `NPM_BOOTSTRAP_TOKEN`. The workflow retains OIDC and `--provenance`, so the bootstrap publication includes provenance.
+- Publish a GitHub Release for that exact tag. The protected `npm` environment workflow runs only from the `release: published` event; pushing a tag does not publish npm.
+- Immediately after the first publication, bind npm trusted publishing to `gnolith/waystone`, `.github/workflows/release.yml`, and the `npm` environment; then remove the bootstrap secret and its `NODE_AUTH_TOKEN` workflow reference.
 - Verify installation from the registry after the single publication workflow succeeds
 
 If a package-owned line is unavailable or unproven, preserve `NO-GO` and name the dependency rather than substituting fixtures.
