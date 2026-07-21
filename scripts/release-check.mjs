@@ -22,8 +22,6 @@ const finalPublishStep = [
   `        run: ${publishCommand}`,
   '        env:',
   '          ARCHIVE: ${{ steps.verify.outputs.archive }}',
-  '          # Remove after the first publish and npm trusted-publisher binding.',
-  '          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}',
 ].join('\n');
 const stageJobIndex = releaseWorkflow.indexOf('\n  stage:');
 const publishJobIndex = releaseWorkflow.indexOf('\n  publish:');
@@ -36,7 +34,7 @@ const requireCondition = (condition, message) => {
 
 requireCondition(
   /^v\d+\.\d+\.\d+$/.test(expectedTag ?? ''),
-  'Pass an exact stable release tag such as v0.1.1.',
+  'Pass an exact stable release tag such as v0.1.2.',
 );
 requireCondition(
   expectedTag === `v${manifest.version}`,
@@ -137,15 +135,16 @@ requireCondition(
     publishJob.includes(publishCommand) &&
     (publishJob.match(/npm publish/g) ?? []).length === 1 &&
     publishJob.trimEnd().endsWith(finalPublishStep) &&
-    (releaseWorkflow.match(/NODE_AUTH_TOKEN:/g) ?? []).length === 1 &&
-    (releaseWorkflow.match(/secrets\.NPM_BOOTSTRAP_TOKEN/g) ?? []).length ===
-      1 &&
+    !releaseWorkflow.includes('NODE_AUTH_TOKEN') &&
+    !releaseWorkflow.includes('NPM_BOOTSTRAP_TOKEN') &&
+    !releaseWorkflow.includes('secrets.') &&
     releaseWorkflow.includes('TAG: ${{ github.event.release.tag_name }}'),
-  'Release workflow must keep stage credential-free and end the fresh protected job with the sole exact publish command, verified absolute archive binding, and sole token binding.',
+  'Release workflow must keep both jobs free of registry secrets and end the fresh OIDC-only protected job with the sole exact publish command and verified absolute archive binding.',
 );
 
 const immutableTags = new Map([
   ['v0.1.0', '46355edd298613fc06be47db6e6ce19b14f62870'],
+  ['v0.1.1', 'a12320e24e2c2017ada3c72ff7d1c553fcc7f188'],
 ]);
 
 for (const [tag, expectedCommit] of immutableTags) {

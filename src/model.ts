@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import type {
-  EntityDatatype as TaprootEntityDatatype,
-  EntityId as TaprootEntityId,
-  EntityType as TaprootEntityType,
-  Rank as TaprootRank,
-  SnakType as TaprootSnakType,
-} from '@gnolith/taproot';
+  TaprootEntityDatatype,
+  TaprootEntityId,
+  TaprootEntityType,
+  TaprootRank,
+  TaprootSnakType,
+} from './taproot-contracts.js';
 
 export type EntityId = TaprootEntityId;
 export type EntityType = TaprootEntityType;

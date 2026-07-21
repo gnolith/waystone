@@ -142,5 +142,3 @@ jobs:
         run: npm publish "$ARCHIVE" --ignore-scripts --access public --provenance
         env:
           ARCHIVE: ${{ steps.verify.outputs.archive }}
-          # Remove after the first publish and npm trusted-publisher binding.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}

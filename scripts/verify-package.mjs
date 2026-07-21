@@ -14,6 +14,10 @@ if (!changelog.includes(`## [${manifest.version}]`))
   errors.push(`CHANGELOG.md is missing version ${manifest.version}.`);
 if (manifest.dependencies?.react || manifest.dependencies?.['react-dom'])
   errors.push('React must remain a peer, not a runtime dependency.');
+if (manifest.peerDependencies?.['@types/react'] !== '>=19 <20')
+  errors.push('@types/react must be a required React 19 peer.');
+if (manifest.devDependencies?.['@types/react'] !== '19.2.14')
+  errors.push('@types/react development verification must stay exact.');
 const entryFiles = [];
 for (const [name, target] of Object.entries(manifest.exports)) {
   const values = typeof target === 'string' ? [target] : Object.values(target);
