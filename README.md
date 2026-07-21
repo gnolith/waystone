@@ -15,7 +15,7 @@ Waystone 0.1 is a pre-1.0 public API. Its isolated consumer fixture installs the
 ## Install
 
 ```sh
-npm install @gnolith/waystone react react-dom
+npm install @gnolith/waystone @gnolith/taproot react react-dom @types/react
 ```
 
 Import the precompiled CSS once in the generated Site layout:
@@ -35,7 +35,7 @@ The host does not transpile Waystone source or scan it with Tailwind.
 - `@gnolith/waystone/fixtures` — representative entities, results, plugins, failures, and a mock client for development only.
 - `@gnolith/waystone/styles.css` — compiled production CSS.
 
-Every JavaScript entry has declarations. React is a peer and is never bundled.
+Every JavaScript entry has declarations. React, its public React 19 types, and Taproot are peers; React is never bundled. Waystone's declarations expose local structural Taproot protocol types, so importing the UI package does not resolve Taproot's persistence or RDF declaration graph.
 
 ## Site composition
 
@@ -89,11 +89,12 @@ npm run check
 npm pack --dry-run
 ```
 
-`npm run check` formats, lints, type-checks, runs coverage and accessibility tests, builds declarations and CSS, verifies runtime graphs and tarball contents, and enforces bundle budgets.
+`npm run check` formats, lints, type-checks, runs coverage and accessibility tests, builds declarations and CSS, verifies runtime and declaration graphs and tarball contents, compiles exact packed TS and TSX consumers with strict TypeScript 5.9, and enforces bundle budgets.
 
 ## Compatibility
 
 - React and React DOM: `>=19 <20`
+- React declarations: `@types/react >=19 <20`
 - Node for development: `>=22`
 - Runtime exports: ESM and Web APIs, with package verification rejecting Node and Cloudflare imports reachable from public entry points
 - TypeScript consumers: strict projects on currently supported TypeScript 5.9+

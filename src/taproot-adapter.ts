@@ -1,19 +1,21 @@
 import type {
-  AliasMap as TaprootAliasMap,
-  DataValueValue as TaprootDataValueValue,
-  EntityIdValue as TaprootEntityIdValue,
-  GlobeCoordinateValue as TaprootCoordinateValue,
-  LanguageMap as TaprootLanguageMap,
-  Page as TaprootPage,
-  Reference as TaprootReference,
-  ResolvedEntity as TaprootResolvedEntity,
-  RevisionEntry as TaprootRevisionEntry,
-  SearchResult as TaprootSearchResult,
-  Snak as TaprootSnak,
-  Statement as TaprootStatement,
-  StoredEntity as TaprootStoredEntity,
-  WikibaseEntity as TaprootWikibaseEntity,
-} from '@gnolith/taproot';
+  TaprootAliasMap,
+  TaprootCoordinateValue,
+  TaprootDataValueValue,
+  TaprootEntityIdValue,
+  TaprootLanguageMap,
+  TaprootPage,
+  TaprootQuantityValue,
+  TaprootReference,
+  TaprootResolvedEntity,
+  TaprootRevisionEntry,
+  TaprootSearchResult,
+  TaprootSnak,
+  TaprootStatement,
+  TaprootStoredEntity,
+  TaprootTimeValue,
+  TaprootWikibaseEntity,
+} from './taproot-contracts.js';
 import type {
   CoordinateValue,
   EntityRevisionMetadata,
@@ -29,15 +31,15 @@ import type {
 } from './model.js';
 
 export type {
-  EntityCommand as TaprootEntityCommand,
-  ExpectedRevision as TaprootExpectedRevision,
-  Page as TaprootPage,
-  ResolvedEntity as TaprootResolvedEntity,
-  RevisionEntry as TaprootRevisionEntry,
-  SearchResult as TaprootSearchResult,
-  StoredEntity as TaprootStoredEntity,
-  WikibaseEntity as TaprootWikibaseEntity,
-} from '@gnolith/taproot';
+  TaprootEntityCommand,
+  TaprootExpectedRevision,
+  TaprootPage,
+  TaprootResolvedEntity,
+  TaprootRevisionEntry,
+  TaprootSearchResult,
+  TaprootStoredEntity,
+  TaprootWikibaseEntity,
+} from './taproot-contracts.js';
 
 type TaprootEntityEnvelope =
   TaprootWikibaseEntity | TaprootStoredEntity | TaprootResolvedEntity;
@@ -75,15 +77,13 @@ function isMonolingualText(
   return typeof value === 'object' && value !== null && 'text' in value;
 }
 
-function isTime(
-  value: TaprootDataValueValue,
-): value is import('@gnolith/taproot').TimeValue {
+function isTime(value: TaprootDataValueValue): value is TaprootTimeValue {
   return typeof value === 'object' && value !== null && 'time' in value;
 }
 
 function isQuantity(
   value: TaprootDataValueValue,
-): value is import('@gnolith/taproot').QuantityValue {
+): value is TaprootQuantityValue {
   return typeof value === 'object' && value !== null && 'amount' in value;
 }
 
