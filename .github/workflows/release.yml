@@ -14,8 +14,6 @@ jobs:
       archive: ${{ steps.package.outputs.archive }}
       artifact: ${{ steps.package.outputs.artifact }}
       digest: ${{ steps.package.outputs.digest }}
-      package_name: ${{ steps.package.outputs.package_name }}
-      version: ${{ steps.package.outputs.version }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -35,7 +33,6 @@ jobs:
         run: |
           source_archive="$(npm pack --ignore-scripts)"
           test -f "$source_archive"
-          package_name="$(node -p "require('./package.json').name")"
           version="$(node -p "require('./package.json').version")"
           digest="$(sha256sum "$source_archive" | cut -d ' ' -f 1)"
           archive="waystone-${version}-${digest}.tgz"
@@ -44,8 +41,6 @@ jobs:
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "artifact=waystone-${digest}" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "package_name=$package_name" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Upload content-addressed publication archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -60,7 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm
     permissions:
-      contents: read
       id-token: write
     steps:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -78,9 +72,14 @@ jobs:
         env:
           EXPECTED_ARCHIVE: ${{ needs.stage.outputs.archive }}
           EXPECTED_DIGEST: ${{ needs.stage.outputs.digest }}
-          EXPECTED_PACKAGE_NAME: ${{ needs.stage.outputs.package_name }}
-          EXPECTED_VERSION: ${{ needs.stage.outputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            exit 1
+          fi
+          expected_name='@gnolith/waystone'
+          expected_version="${RELEASE_TAG#v}"
+          test "$EXPECTED_ARCHIVE" = "waystone-${expected_version}-${EXPECTED_DIGEST}.tgz"
           root="$RUNNER_TEMP/waystone-package"
           test "$(find "$root" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1
           archive="$root/$EXPECTED_ARCHIVE"
@@ -90,12 +89,54 @@ jobs:
           case "$archive" in "$root"/*) ;; *) exit 1 ;; esac
           test "$(basename "$archive")" = "$EXPECTED_ARCHIVE"
           test "$(sha256sum "$archive" | cut -d ' ' -f 1)" = "$EXPECTED_DIGEST"
-          tar -tvzf "$archive" | awk 'substr($1, 1, 1) != "-" && substr($1, 1, 1) != "d" { exit 1 }'
-          manifest="$(tar -xOzf "$archive" package/package.json)"
-          actual_name="$(printf '%s' "$manifest" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>process.stdout.write(JSON.parse(s).name))")"
-          actual_version="$(printf '%s' "$manifest" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>process.stdout.write(JSON.parse(s).version))")"
-          test "$actual_name" = "$EXPECTED_PACKAGE_NAME"
-          test "$actual_version" = "$EXPECTED_VERSION"
+          python3 - "$archive" "$expected_name" "$expected_version" <<'PY'
+          import json
+          import posixpath
+          import sys
+          import tarfile
+          import unicodedata
+
+          archive, expected_name, expected_version = sys.argv[1:]
+          seen = set()
+          manifest_member = None
+
+          with tarfile.open(archive, "r:gz") as package:
+              members = package.getmembers()
+              for member in members:
+                  name = member.name
+                  parts = name.split("/")
+                  if name.startswith("/") or posixpath.isabs(name):
+                      raise SystemExit("Archive member path is absolute.")
+                  if ".." in parts or "." in parts or "" in parts:
+                      raise SystemExit("Archive member path contains traversal or ambiguous components.")
+                  if "\\" in name:
+                      raise SystemExit("Archive member path contains a backslash.")
+                  if any(unicodedata.category(character) == "Cc" for character in name):
+                      raise SystemExit("Archive member path contains a control character.")
+                  if not name.startswith("package/"):
+                      raise SystemExit("Archive member is outside package/.")
+                  if name in seen:
+                      raise SystemExit("Duplicate archive member path.")
+                  seen.add(name)
+                  if not member.isfile():
+                      raise SystemExit("Archive contains a symlink or non-regular member.")
+                  if name == "package/package.json":
+                      if manifest_member is not None:
+                          raise SystemExit("Archive must contain exactly one regular package/package.json.")
+                      manifest_member = member
+
+              if manifest_member is None:
+                  raise SystemExit("Archive must contain exactly one regular package/package.json.")
+              manifest_file = package.extractfile(manifest_member)
+              if manifest_file is None:
+                  raise SystemExit("Unable to read validated package/package.json.")
+              manifest = json.load(manifest_file)
+
+          if manifest.get("name") != expected_name:
+              raise SystemExit("Package name does not match the literal expected package.")
+          if manifest.get("version") != expected_version:
+              raise SystemExit("Package version does not match the validated release tag.")
+          PY
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
       - name: Publish revalidated archive with provenance
         run: npm publish "$ARCHIVE" --ignore-scripts --access public --provenance

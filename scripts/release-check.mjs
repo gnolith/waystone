@@ -83,15 +83,16 @@ requireCondition(
     stageJob.includes('sha256sum') &&
     stageJob.includes('archive="waystone-${version}-${digest}.tgz"') &&
     stageJob.includes('artifact=waystone-${digest}') &&
-    stageJob.includes('package_name=$package_name') &&
-    stageJob.includes('version=$version') &&
     stageJob.includes('npm publish "$archive" --dry-run --ignore-scripts') &&
     stageJob.includes(
       'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
     ) &&
     publishJob.includes('needs: stage') &&
     publishJob.includes('environment: npm') &&
-    publishJob.includes('id-token: write') &&
+    publishJob.includes('permissions:\n      id-token: write\n    steps:') &&
+    !publishJob.includes('contents:') &&
+    !publishJob.includes('actions:') &&
+    !publishJob.includes('packages:') &&
     publishJob.includes(
       'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093',
     ) &&
@@ -99,16 +100,27 @@ requireCondition(
     !publishJob.includes('npm run ') &&
     !publishJob.includes('npm pack ') &&
     publishJob.includes('EXPECTED_DIGEST: ${{ needs.stage.outputs.digest }}') &&
-    publishJob.includes(
-      'EXPECTED_PACKAGE_NAME: ${{ needs.stage.outputs.package_name }}',
-    ) &&
-    publishJob.includes(
-      'EXPECTED_VERSION: ${{ needs.stage.outputs.version }}',
-    ) &&
+    publishJob.includes('RELEASE_TAG: ${{ github.event.release.tag_name }}') &&
+    publishJob.includes("expected_name='@gnolith/waystone'") &&
+    publishJob.includes('expected_version="${RELEASE_TAG#v}"') &&
+    publishJob.includes('^v(0|[1-9][0-9]*)') &&
+    !publishJob.includes('needs.stage.outputs.package_name') &&
+    !publishJob.includes('needs.stage.outputs.version') &&
     publishJob.includes('test -f "$archive"') &&
     publishJob.includes('test ! -L "$archive"') &&
     publishJob.includes('sha256sum "$archive"') &&
-    publishJob.includes('tar -tvzf "$archive"') &&
+    publishJob.includes('Archive member path is absolute.') &&
+    publishJob.includes(
+      'Archive member path contains traversal or ambiguous components.',
+    ) &&
+    publishJob.includes('Archive member path contains a backslash.') &&
+    publishJob.includes('Archive member path contains a control character.') &&
+    publishJob.includes('Archive member is outside package/.') &&
+    publishJob.includes('Duplicate archive member path.') &&
+    publishJob.includes('Archive contains a symlink or non-regular member.') &&
+    publishJob.includes(
+      'Archive must contain exactly one regular package/package.json.',
+    ) &&
     publishJob.includes('package/package.json') &&
     publishJob.includes('archive="$(realpath "$archive")"') &&
     publishJob.includes('echo "archive=$archive" >> "$GITHUB_OUTPUT"') &&

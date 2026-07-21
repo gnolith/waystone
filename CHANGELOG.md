@@ -12,7 +12,7 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Consolidated npm publication behind the protected GitHub Release publication event and added release-candidate guards.
 - Adapted Workshop-shaped entity panels from Waystone's canonical `entity` prop to Workshop's `entityId` contract at the registry boundary.
 - Clarified that headless and process-based consumers compose non-UI packages without importing Waystone.
-- Added a temporary token-authenticated bootstrap path for the package's first npm publication while preserving provenance and OIDC; a fresh credential-only job publishes only a content-addressed, revalidated archive with lifecycle scripts disabled and without checking out repository code.
+- Added a temporary token-authenticated bootstrap path for the package's first npm publication while preserving provenance and OIDC; a fresh credential-only job has only ID-token permission and publishes a content-addressed archive after validating its paths, literal package identity, and release-tag-derived version without checking out repository code or enabling lifecycle scripts.
 - Expanded Taproot compatibility through stable 0.2, moved isolated-consumer archives to unique temporary pack destinations, and separated the recursive consumer install from `prepack`.
 
 ### Added
