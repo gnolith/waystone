@@ -25,7 +25,16 @@ jobs:
         run: node -e "if ('v' + require('./package.json').version !== process.env.TAG) process.exit(1)"
         env:
           TAG: ${{ github.event.release.tag_name }}
-      - run: npm publish --access public --provenance
+      - name: Stage and verify exact publication archive
+        id: package
+        shell: bash
+        run: |
+          archive="$(npm pack --ignore-scripts)"
+          test -f "$archive"
+          npm publish "$archive" --dry-run --ignore-scripts --access public
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+      - name: Publish staged archive with provenance
+        run: npm publish "${{ steps.package.outputs.archive }}" --ignore-scripts --access public --provenance
         env:
           # Remove after the first publish and npm trusted-publisher binding.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}

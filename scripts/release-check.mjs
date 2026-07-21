@@ -14,6 +14,12 @@ const changelog = readFileSync('CHANGELOG.md', 'utf8');
 const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
 const failures = [];
 
+const packCommand = 'npm pack --ignore-scripts';
+const dryRunCommand =
+  'npm publish "$archive" --dry-run --ignore-scripts --access public';
+const publishCommand =
+  'npm publish "${{ steps.package.outputs.archive }}" --ignore-scripts --access public --provenance';
+
 const requireCondition = (condition, message) => {
   if (!condition) failures.push(message);
 };
@@ -70,11 +76,18 @@ requireCondition(
 requireCondition(
   releaseWorkflow.includes('id-token: write') &&
     releaseWorkflow.includes('environment: npm') &&
-    releaseWorkflow.includes('npm publish --access public --provenance') &&
+    releaseWorkflow.includes(packCommand) &&
+    releaseWorkflow.includes(dryRunCommand) &&
+    releaseWorkflow.includes(publishCommand) &&
+    releaseWorkflow.indexOf(packCommand) <
+      releaseWorkflow.indexOf(publishCommand) &&
+    (releaseWorkflow.match(/NODE_AUTH_TOKEN:/g) ?? []).length === 1 &&
+    (releaseWorkflow.match(/secrets\.NPM_BOOTSTRAP_TOKEN/g) ?? []).length ===
+      1 &&
     releaseWorkflow.includes('NODE_AUTH_TOKEN:') &&
     releaseWorkflow.includes('secrets.NPM_BOOTSTRAP_TOKEN') &&
     releaseWorkflow.includes('TAG: ${{ github.event.release.tag_name }}'),
-  'Release workflow lacks protected bootstrap publication safeguards.',
+  'Release workflow must stage and verify one token-free archive, then publish that exact archive without lifecycle scripts from the sole credential-bearing step.',
 );
 
 const immutableTags = new Map([

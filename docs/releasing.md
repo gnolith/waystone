@@ -15,6 +15,7 @@ Waystone is `NO-GO` unless every package-owned mandatory item has current eviden
 - Record package commands, versions, package integrity, consumer build, and SSR results in `docs/release-evidence.md`
 - After authorization, create a new immutable `vX.Y.Z` tag at the verified merge commit; never move or reuse an existing version tag
 - For the first publication only, store a short-lived npm automation token as the protected `npm` environment secret `NPM_BOOTSTRAP_TOKEN`. The workflow retains OIDC and `--provenance`, so the bootstrap publication includes provenance.
+- The workflow stages and dry-run-verifies the exact tarball without credentials after the full package check. Only the final publish step receives the bootstrap token, publishes that staged tarball, and uses `--ignore-scripts` so package lifecycle code cannot run with registry credentials.
 - Publish a GitHub Release for that exact tag. The protected `npm` environment workflow runs only from the `release: published` event; pushing a tag does not publish npm.
 - Immediately after the first publication, bind npm trusted publishing to `gnolith/waystone`, `.github/workflows/release.yml`, and the `npm` environment; then remove the bootstrap secret and its `NODE_AUTH_TOKEN` workflow reference.
 - Verify installation from the registry after the single publication workflow succeeds
