@@ -17,6 +17,14 @@ const failures = [];
 const packCommand = 'npm pack --ignore-scripts';
 const publishCommand =
   'npm publish "$ARCHIVE" --ignore-scripts --access public --provenance';
+const finalPublishStep = [
+  '      - name: Publish revalidated archive with provenance',
+  `        run: ${publishCommand}`,
+  '        env:',
+  '          ARCHIVE: ${{ steps.verify.outputs.archive }}',
+  '          # Remove after the first publish and npm trusted-publisher binding.',
+  '          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}',
+].join('\n');
 const stageJobIndex = releaseWorkflow.indexOf('\n  stage:');
 const publishJobIndex = releaseWorkflow.indexOf('\n  publish:');
 const stageJob = releaseWorkflow.slice(stageJobIndex, publishJobIndex);
@@ -84,6 +92,8 @@ requireCondition(
     stageJob.includes('archive="waystone-${version}-${digest}.tgz"') &&
     stageJob.includes('artifact=waystone-${digest}') &&
     stageJob.includes('npm publish "$archive" --dry-run --ignore-scripts') &&
+    !stageJob.includes('NODE_AUTH_TOKEN') &&
+    !stageJob.includes('NPM_BOOTSTRAP_TOKEN') &&
     stageJob.includes(
       'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
     ) &&
@@ -125,11 +135,13 @@ requireCondition(
     publishJob.includes('archive="$(realpath "$archive")"') &&
     publishJob.includes('echo "archive=$archive" >> "$GITHUB_OUTPUT"') &&
     publishJob.includes(publishCommand) &&
+    (publishJob.match(/npm publish/g) ?? []).length === 1 &&
+    publishJob.trimEnd().endsWith(finalPublishStep) &&
     (releaseWorkflow.match(/NODE_AUTH_TOKEN:/g) ?? []).length === 1 &&
     (releaseWorkflow.match(/secrets\.NPM_BOOTSTRAP_TOKEN/g) ?? []).length ===
       1 &&
     releaseWorkflow.includes('TAG: ${{ github.event.release.tag_name }}'),
-  'Release workflow must pass a content-addressed archive from a token-free stage job to a fresh protected job that revalidates it and only publishes the absolute archive without lifecycle scripts.',
+  'Release workflow must keep stage credential-free and end the fresh protected job with the sole exact publish command, verified absolute archive binding, and sole token binding.',
 );
 
 const immutableTags = new Map([
