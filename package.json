@@ -1,47 +1,104 @@
 {
   "name": "@gnolith/waystone",
-  "version": "0.0.0",
-  "description": "Local MCP connector for reaching Gnolith sites.",
+  "version": "0.1.0",
+  "description": "The accessible human interface and extension surface for Gnolith research Sites.",
   "type": "module",
-  "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/gnolith/waystone.git"
+    "url": "git+https://github.com/gnolith/waystone.git"
+  },
+  "homepage": "https://github.com/gnolith/waystone#readme",
+  "bugs": {
+    "url": "https://github.com/gnolith/waystone/issues"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js"
+    },
+    "./site": {
+      "types": "./dist/site.d.ts",
+      "import": "./dist/site.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures.d.ts",
+      "import": "./dist/fixtures.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "docs",
     "README.md",
     "LICENSE",
-    "SECURITY.md"
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run verify:package && npm run budgets && npm run consumer:check",
+    "consumer:check": "node scripts/check-consumer.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint src test",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "verify:package": "node scripts/verify-package.mjs",
+    "budgets": "node scripts/check-budgets.mjs",
+    "prepack": "npm run check"
+  },
+  "peerDependencies": {
+    "react": ">=19 <20",
+    "react-dom": ">=19 <20"
   },
   "engines": {
     "node": ">=22"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "packageManager": "npm@11.9.0",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^24.0.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitest/coverage-v8": "^3.2.4",
+    "axe-core": "^4.10.3",
     "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "esbuild": "^0.25.8",
+    "jsdom": "^26.1.0",
     "prettier": "^3.9.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.64.0",
     "vitest": "^3.2.4"
   },
+  "keywords": [
+    "gnolith",
+    "research",
+    "wikibase",
+    "sparql",
+    "react",
+    "codex-sites"
+  ],
   "license": "MIT"
 }

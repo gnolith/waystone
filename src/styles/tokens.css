@@ -1,0 +1,71 @@
+:root {
+  color-scheme: light dark;
+  --ws-color-bg: #f7f5ef;
+  --ws-color-surface: #fffdf8;
+  --ws-color-surface-raised: #ffffff;
+  --ws-color-text: #18221e;
+  --ws-color-muted: #5e6963;
+  --ws-color-border: #c8cec9;
+  --ws-color-accent: #126a52;
+  --ws-color-accent-strong: #074c3a;
+  --ws-color-accent-soft: #dcefe7;
+  --ws-color-danger: #a52a2a;
+  --ws-color-warning: #855b00;
+  --ws-color-success: #17633b;
+  --ws-color-focus: #0067c5;
+  --ws-font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --ws-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --ws-radius-sm: 0.25rem;
+  --ws-radius-md: 0.6rem;
+  --ws-shadow: 0 0.4rem 1.5rem rgb(15 35 27 / 0.08);
+  --ws-space-1: 0.25rem;
+  --ws-space-2: 0.5rem;
+  --ws-space-3: 0.75rem;
+  --ws-space-4: 1rem;
+  --ws-space-6: 1.5rem;
+  --ws-space-8: 2rem;
+  --ws-content-width: 88rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ws-color-bg: #101714;
+    --ws-color-surface: #17201c;
+    --ws-color-surface-raised: #1c2822;
+    --ws-color-text: #edf3ef;
+    --ws-color-muted: #aebbb4;
+    --ws-color-border: #425048;
+    --ws-color-accent: #6fd4ae;
+    --ws-color-accent-strong: #9de8ca;
+    --ws-color-accent-soft: #173f32;
+    --ws-color-danger: #ff9994;
+    --ws-color-warning: #f2c56b;
+    --ws-color-success: #88d5a6;
+    --ws-color-focus: #78bfff;
+  }
+}
+[data-waystone-theme='light'] {
+  color-scheme: light;
+  --ws-color-bg: #f7f5ef;
+  --ws-color-surface: #fffdf8;
+  --ws-color-surface-raised: #fff;
+  --ws-color-text: #18221e;
+  --ws-color-muted: #5e6963;
+  --ws-color-border: #c8cec9;
+  --ws-color-accent: #126a52;
+  --ws-color-accent-strong: #074c3a;
+  --ws-color-accent-soft: #dcefe7;
+}
+[data-waystone-theme='dark'] {
+  color-scheme: dark;
+  --ws-color-bg: #101714;
+  --ws-color-surface: #17201c;
+  --ws-color-surface-raised: #1c2822;
+  --ws-color-text: #edf3ef;
+  --ws-color-muted: #aebbb4;
+  --ws-color-border: #425048;
+  --ws-color-accent: #6fd4ae;
+  --ws-color-accent-strong: #9de8ca;
+  --ws-color-accent-soft: #173f32;
+}
