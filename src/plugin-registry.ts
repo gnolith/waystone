@@ -10,7 +10,7 @@ import type {
   WaystoneRouteDescriptor,
   WaystoneSettingsContribution,
 } from './plugin-contracts.js';
-import type { ComponentType } from 'react';
+import { createElement, type ComponentType } from 'react';
 
 function contextualComponent<T>(
   component: ComponentType<Record<string, never>>,
@@ -22,6 +22,26 @@ function isWorkshopShape(
   plugin: WaystonePluginInput,
 ): plugin is import('./plugin-contracts.js').WorkshopCompatibleWaystonePlugin {
   return 'name' in plugin;
+}
+
+function workshopEntityPanelComponent(
+  component: ComponentType<Record<string, never>>,
+): ComponentType<
+  import('./plugin-contracts.js').WaystonePluginContext & {
+    entity: import('./model.js').WikibaseEntity;
+  }
+> {
+  const WorkshopEntityPanel = component as unknown as ComponentType<
+    import('./plugin-contracts.js').WaystonePluginContext & {
+      entityId?: string;
+    }
+  >;
+  return function WorkshopEntityPanelAdapter({ entity, ...context }) {
+    return createElement(WorkshopEntityPanel, {
+      ...context,
+      entityId: entity.id,
+    });
+  };
 }
 
 function normalizePlugin(plugin: WaystonePluginInput): WaystonePlugin {
@@ -47,11 +67,7 @@ function normalizePlugin(plugin: WaystonePluginInput): WaystonePlugin {
           entityPanels: plugin.entityPanels.map((item) => ({
             id: item.id,
             label: item.title,
-            component: contextualComponent<
-              import('./plugin-contracts.js').WaystonePluginContext & {
-                entity: import('./model.js').WikibaseEntity;
-              }
-            >(item.component),
+            component: workshopEntityPanelComponent(item.component),
           })),
         }
       : {}),

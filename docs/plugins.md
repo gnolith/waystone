@@ -44,3 +44,7 @@ Plugins receive only the documented client and capability context plus an entity
 Current Workshop UI plugins may use `name` instead of `label`, `routes` instead of `routeDescriptors`, `title` on contributions, and `onboarding` instead of `onboardingSteps`. `createWaystoneRegistry()` accepts that structural shape and normalizes it to the canonical Waystone contract. Route IDs are namespaced with a `-route` suffix during normalization because Workshop currently reuses a contribution ID for its navigation item and route while Waystone requires globally unique normalized contribution IDs.
 
 This compatibility is structural only: Waystone never imports Workshop. New plugins should author the canonical contract shown above; the aliases exist so the separately published Workshop package can register without a synchronized source dependency.
+
+For Workshop-shaped entity panels, the compatibility adapter converts Waystone's canonical `entity` prop to Workshop's `entityId` prop at render time. This does not change the canonical `WaystoneEntityPanelContribution` contract.
+
+Waystone is not part of headless or process-based composition. Those consumers use the non-UI Gnolith packages directly and must not import Waystone; CLI, persistence, container, and process lifecycle concerns belong to their assembly layer.
