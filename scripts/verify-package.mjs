@@ -68,6 +68,24 @@ if (packed.status !== 0)
 else {
   const output = JSON.parse(packed.stdout);
   const files = output[0]?.files?.map((item) => item.path) ?? [];
+  const requiredPackageDocs = [
+    'docs/accessibility.md',
+    'docs/api-client.md',
+    'docs/codex-sites.md',
+    'docs/components.md',
+    'docs/plugins.md',
+    'docs/releasing.md',
+    'docs/styling.md',
+    'docs/taproot-dependencies.md',
+    'docs/troubleshooting.md',
+    'docs/upgrades.md',
+  ];
+  for (const file of requiredPackageDocs)
+    if (!files.includes(file)) errors.push(`Tarball is missing ${file}`);
+  if (files.includes('docs/release-evidence.md'))
+    errors.push(
+      'Repository-only release evidence must not ship in the tarball.',
+    );
   for (const file of files)
     if (!(
       file.startsWith('dist/') ||

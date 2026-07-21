@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const npmCli = process.env.npm_execpath;
@@ -20,7 +22,24 @@ function run(args, cwd = process.cwd()) {
 
 const packed = JSON.parse(run(['pack', '--ignore-scripts', '--json']));
 const archive = path.resolve(packed[0].filename);
-const canary = path.resolve('examples/codex-site-canary');
-run(['install', '--ignore-scripts', '--save-exact', archive], canary);
-process.stdout.write(run(['test'], canary));
-console.log(`Fresh consumer verified from ${path.basename(archive)}.`);
+const sourceCanary = path.resolve('examples/codex-site-canary');
+const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'waystone-consumer-'));
+const canary = path.join(temporaryRoot, 'codex-site-canary');
+
+try {
+  cpSync(sourceCanary, canary, {
+    recursive: true,
+    filter(source) {
+      const name = path.basename(source);
+      return name !== 'node_modules' && name !== '.vinext';
+    },
+  });
+  run(['install', '--ignore-scripts', '--save-exact', archive], canary);
+  process.stdout.write(run(['test'], canary));
+  console.log(
+    `Fresh isolated consumer verified from ${path.basename(archive)}.`,
+  );
+} finally {
+  rmSync(temporaryRoot, { recursive: true, force: true });
+  rmSync(archive, { force: true });
+}
