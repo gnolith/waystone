@@ -4,15 +4,18 @@ Status: **PACKAGE CHECKS PASS**
 
 This file records evidence attributable to the published `@gnolith/waystone` package. Refresh it from a clean release candidate before publishing.
 
-Package-owned evidence refreshed locally on 2026-07-20:
+Package-owned evidence refreshed locally on 2026-07-21 for the `0.1.1` candidate:
 
 - Node `v24.14.0` and npm `11.9.0`.
 - ESLint and strict TypeScript passed.
 - All 22 unit, component, adapter, plugin, conflict, and accessibility tests passed with coverage above the configured thresholds.
 - Public export, declaration, CSS, runtime-graph, tarball allowlist, React-external, and bundle-budget checks passed.
 - The exact archive installed into a fresh temporary consumer; its vinext build completed and all seven SSR and fixture-plugin tests passed.
-- Archive `gnolith-waystone-0.1.0.tgz`: shasum `580223e678fbd12edc75b378ae38f93d6ba7c93e`; integrity `sha512-tQ0LJJkWhLy7A0iXv1pJJtOKeJJs8uYW6qf30llU3bnkuVgQ++y9oFEex7btR1QSeOPJho21/+Y1ibc1+m1nZA==`.
+- Package-boundary checks confirmed that tracked source and archives are Waystone-owned; the isolated consumer uses only the exact `0.1.1` archive and public package exports.
+- Archive `gnolith-waystone-0.1.1.tgz`: shasum `d2e12f67885e2ca8561034a66b277fef271028b2`; integrity `sha512-iPlxFRVFYmUn8rsMEIvqXuGHH/qIRpLqrtYj4guQfjEzleuNpFi1CIxdrsU3mXaimX4qO13MktAMo9sgKn49Ug==`.
 - Production-dependency audit for the isolated consumer reported zero vulnerabilities.
+- `npm run release:check -- v0.1.1` verified version, changelog, exact-consumer archive, immutable `v0.1.0`, and the single GitHub Release publication trigger. The `v0.1.1` tag remains intentionally absent pending release authorization.
+- The GitHub `npm` environment exists with OIDC enabled in the workflow and no npm token secret. GitHub currently reports no environment approval or branch/tag protection rules; add an approval rule before publication if organizational policy requires one. The external npm trusted-publisher binding is not observable from repository configuration and must be confirmed before publication.
 
 The full `npm run check` command passed on the Windows verification checkout after the repository's LF policy was made explicit for Markdown, JSON, and YAML files.
 

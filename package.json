@@ -1,6 +1,6 @@
 {
   "name": "@gnolith/waystone",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The accessible human interface and extension surface for Gnolith research Sites.",
   "type": "module",
   "sideEffects": [
@@ -63,6 +63,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint src test",
+    "release:check": "node scripts/release-check.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",

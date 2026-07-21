@@ -12,7 +12,7 @@ npm run build
 npm pack --ignore-scripts
 
 # In this directory
-npm install ../../gnolith-waystone-0.1.0.tgz --save-exact
+npm install ../../gnolith-waystone-0.1.1.tgz --save-exact
 npm test
 ```
 
