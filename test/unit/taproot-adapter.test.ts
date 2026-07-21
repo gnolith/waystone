@@ -1,44 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  Page,
-  ResolvedEntity,
-  RevisionEntry,
-  SearchResult,
-  WikibaseEntity as TaprootEntity,
-} from '@gnolith/taproot';
 import {
   fromTaprootEntity,
   fromTaprootRevision,
   fromTaprootRevisionMetadata,
   fromTaprootSearchPage,
+  type TaprootPage as Page,
+  type TaprootResolvedEntity,
+  type TaprootRevisionEntry,
+  type TaprootSearchResult as SearchResult,
+  type TaprootStatement,
 } from '../../src/taproot-adapter.js';
 
-const canonical: TaprootEntity = {
+const statement: TaprootStatement = {
+  id: 'Q7$statement',
+  type: 'statement',
+  text: 'Record seven is related to record eight.',
+  rank: 'preferred',
+  mainsnak: {
+    snaktype: 'value',
+    property: 'P1',
+    datatype: 'wikibase-item',
+    datavalue: {
+      type: 'wikibase-entityid',
+      value: { 'entity-type': 'item', id: 'Q8', 'numeric-id': 8 },
+    },
+  },
+  qualifiers: {},
+  'qualifiers-order': [],
+  references: [],
+};
+
+const canonical = {
   id: 'Q7',
   type: 'item',
   labels: { en: { language: 'en', value: 'Canonical record' } },
   descriptions: { en: { language: 'en', value: 'Taproot JSON' } },
   aliases: { en: [{ language: 'en', value: 'Record seven' }] },
   claims: {
-    P1: [
-      {
-        id: 'Q7$statement',
-        type: 'statement',
-        rank: 'preferred',
-        mainsnak: {
-          snaktype: 'value',
-          property: 'P1',
-          datatype: 'wikibase-item',
-          datavalue: {
-            type: 'wikibase-entityid',
-            value: { 'entity-type': 'item', id: 'Q8', 'numeric-id': 8 },
-          },
-        },
-        qualifiers: {},
-        'qualifiers-order': [],
-        references: [],
-      },
-    ],
+    P1: [statement],
   },
   sitelinks: {
     research: {
@@ -50,11 +49,11 @@ const canonical: TaprootEntity = {
   },
   lastrevid: 4,
   modified: '2026-07-20T12:00:00.000Z',
-};
+} satisfies import('../../src/taproot-contracts.js').TaprootWikibaseEntity;
 
 describe('Taproot protocol adapter', () => {
   it('derives the display entity from canonical Taproot JSON and lifecycle state', () => {
-    const resolved: ResolvedEntity = {
+    const resolved: TaprootResolvedEntity = {
       entity: canonical,
       requestedId: 'Q6',
       resolvedId: 'Q7',
@@ -71,11 +70,14 @@ describe('Taproot protocol adapter', () => {
       redirect: 'Q7',
     });
     expect(entity.statements.P1?.[0]?.mainsnak.datavalue).toBe('Q8');
+    expect(entity.statements.P1?.[0]?.text).toBe(
+      'Record seven is related to record eight.',
+    );
     expect(entity.sitelinks?.research?.url).toBe('https://example.test/record');
   });
 
   it('maps revisions and attribution without losing lifecycle metadata', () => {
-    const revision: RevisionEntry = {
+    const revision: TaprootRevisionEntry = {
       entityId: 'Q7',
       revision: 4,
       entity: canonical,

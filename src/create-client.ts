@@ -137,6 +137,28 @@ function defaultRevisionsDecoder(value: unknown): EntityRevisionPage {
   return value as EntityRevisionPage;
 }
 
+function assertAuthoredStatementText(input: EntityMutationInput): void {
+  for (const operation of input.operations) {
+    const text =
+      operation.op === 'add-statement' || operation.op === 'replace-statement'
+        ? operation.statement.text
+        : operation.op === 'set-rank'
+          ? operation.text
+          : undefined;
+    if (
+      (operation.op === 'add-statement' ||
+        operation.op === 'replace-statement' ||
+        operation.op === 'set-rank') &&
+      (typeof text !== 'string' || !text.trim())
+    ) {
+      throw new WaystoneRequestError(
+        'Authored statement text is required for this revision.',
+        { kind: 'validation' },
+      );
+    }
+  }
+}
+
 export function createWaystoneClient(
   options: CreateWaystoneClientOptions = {},
 ): WaystoneClient {
@@ -270,6 +292,7 @@ export function createWaystoneClient(
       ) {
         const operation = input.operations.map((item) => item.op).join(',');
         try {
+          assertAuthoredStatementText(input);
           const value = await request<unknown>(
             paths.entity(id),
             mutation('PATCH', input, mutationOptions),

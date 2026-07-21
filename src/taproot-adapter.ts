@@ -37,6 +37,7 @@ export type {
   TaprootResolvedEntity,
   TaprootRevisionEntry,
   TaprootSearchResult,
+  TaprootStatement,
   TaprootStoredEntity,
   TaprootWikibaseEntity,
 } from './taproot-contracts.js';
@@ -157,6 +158,7 @@ export function fromTaprootStatement(
 ): WaystoneStatement {
   return {
     id: statement.id,
+    text: statement.text,
     rank: statement.rank,
     mainsnak: fromTaprootSnak(statement.mainsnak),
     qualifiers: snakMap(statement.qualifiers),

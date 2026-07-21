@@ -98,6 +98,8 @@ export interface TaprootReference {
 export interface TaprootStatement {
   id: string;
   type: 'statement';
+  /** Authored natural-language description of this exact statement revision. */
+  text: string;
   rank: TaprootRank;
   mainsnak: TaprootSnak;
   qualifiers: Record<TaprootPropertyId, TaprootSnak[]>;
@@ -201,23 +203,41 @@ export type TaprootEntityCommand =
       statement: TaprootStatement;
     }
   | { type: 'remove-statement'; statementId: string }
-  | { type: 'set-statement-rank'; statementId: string; rank: TaprootRank }
-  | { type: 'add-qualifier'; statementId: string; snak: TaprootSnak }
+  | {
+      type: 'set-statement-rank';
+      statementId: string;
+      rank: TaprootRank;
+      text: string;
+    }
+  | {
+      type: 'add-qualifier';
+      statementId: string;
+      snak: TaprootSnak;
+      text: string;
+    }
   | {
       type: 'remove-qualifier';
       statementId: string;
       property: TaprootPropertyId;
       ordinal: number;
+      text: string;
     }
   | {
       type: 'add-reference';
       statementId: string;
       reference: TaprootReference;
+      text: string;
     }
   | {
       type: 'replace-reference';
       statementId: string;
       hash: string;
       reference: TaprootReference;
+      text: string;
     }
-  | { type: 'remove-reference'; statementId: string; hash: string };
+  | {
+      type: 'remove-reference';
+      statementId: string;
+      hash: string;
+      text: string;
+    };

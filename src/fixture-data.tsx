@@ -24,6 +24,7 @@ const snak = (
 export const fixtureStatements: WaystoneStatement[] = [
   {
     id: 'Q1$preferred',
+    text: 'The specimen is related to the comparison object.',
     rank: 'preferred',
     mainsnak: snak('P1', 'wikibase-item', 'Q2'),
     qualifiers: {
@@ -48,16 +49,19 @@ export const fixtureStatements: WaystoneStatement[] = [
   },
   {
     id: 'Q1$normal',
+    text: 'The specimen uses the related-object property.',
     rank: 'normal',
     mainsnak: snak('P2', 'wikibase-property', 'P6'),
   },
   {
     id: 'Q1$string',
+    text: 'The specimen has a safely wrapped research note.',
     rank: 'normal',
     mainsnak: snak('P3', 'string', 'A safely wrapped long research note'),
   },
   {
     id: 'Q1$mono',
+    text: 'The specimen is described as a field record in English.',
     rank: 'normal',
     mainsnak: snak('P4', 'monolingualtext', {
       language: 'en',
@@ -66,6 +70,7 @@ export const fixtureStatements: WaystoneStatement[] = [
   },
   {
     id: 'Q1$quantity',
+    text: 'The specimen measures 12.5 centimetres.',
     rank: 'normal',
     mainsnak: snak('P5', 'quantity', {
       amount: '+12.5',
@@ -76,6 +81,7 @@ export const fixtureStatements: WaystoneStatement[] = [
   },
   {
     id: 'Q1$coordinate',
+    text: 'The specimen was recorded at the documented coordinates.',
     rank: 'normal',
     mainsnak: snak('P6', 'globe-coordinate', {
       latitude: 41.8781,
@@ -85,16 +91,19 @@ export const fixtureStatements: WaystoneStatement[] = [
   },
   {
     id: 'Q1$some',
+    text: 'The specimen has an unknown value for property P12.',
     rank: 'normal',
     mainsnak: { property: 'P12', datatype: 'string', snaktype: 'somevalue' },
   },
   {
     id: 'Q1$none',
+    text: 'The specimen has no value for property P13.',
     rank: 'deprecated',
     mainsnak: { property: 'P13', datatype: 'time', snaktype: 'novalue' },
   },
   {
     id: 'Q1$unsupported',
+    text: 'The specimen retains an opaque experimental value.',
     rank: 'deprecated',
     mainsnak: snak('P14', 'experimental-datatype', 'opaque'),
   },
@@ -274,6 +283,23 @@ function applyOperations(
 ): WikibaseEntity {
   const next = structuredClone(entity);
   for (const operation of input.operations) {
+    const statementText =
+      operation.op === 'add-statement' || operation.op === 'replace-statement'
+        ? operation.statement.text
+        : operation.op === 'set-rank'
+          ? operation.text
+          : undefined;
+    if (
+      (operation.op === 'add-statement' ||
+        operation.op === 'replace-statement' ||
+        operation.op === 'set-rank') &&
+      (typeof statementText !== 'string' || !statementText.trim())
+    ) {
+      throw new WaystoneRequestError(
+        'Authored statement text is required for this revision.',
+        { kind: 'validation' },
+      );
+    }
     switch (operation.op) {
       case 'set-label':
         next.labels[operation.language] = operation.value;
@@ -329,7 +355,10 @@ function applyOperations(
           const statement = statements.find(
             (value) => value.id === operation.statementId,
           );
-          if (statement) statement.rank = operation.rank;
+          if (statement) {
+            statement.rank = operation.rank;
+            statement.text = operation.text;
+          }
         }
         break;
       case 'redirect':

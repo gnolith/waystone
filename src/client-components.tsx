@@ -304,6 +304,7 @@ export function EntityEditor({
     (entity.aliases[language] ?? []).join('\n'),
   );
   const [statementJson, setStatementJson] = useState('');
+  const [statementText, setStatementText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   const [success, setSuccess] = useState<string>();
@@ -311,7 +312,8 @@ export function EntityEditor({
     label !== (entity.labels[language] ?? '') ||
     description !== (entity.descriptions[language] ?? '') ||
     aliases !== (entity.aliases[language] ?? []).join('\n') ||
-    Boolean(statementJson.trim());
+    Boolean(statementJson.trim()) ||
+    Boolean(statementText);
   useUnsavedChanges(dirty);
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -334,10 +336,20 @@ export function EntityEditor({
       if (!newAliases.has(value))
         operations.push({ op: 'remove-alias', language, value });
     if (statementJson.trim()) {
+      if (!statementText.trim()) {
+        setError(
+          new WaystoneRequestError(
+            'Authored statement text is required for this revision.',
+            { kind: 'validation' },
+          ),
+        );
+        return;
+      }
       try {
+        const statement = JSON.parse(statementJson) as WaystoneStatement;
         operations.push({
           op: 'add-statement',
-          statement: JSON.parse(statementJson) as WaystoneStatement,
+          statement: { ...statement, text: statementText },
         });
       } catch {
         setError(
@@ -367,6 +379,7 @@ export function EntityEditor({
       );
       onSaved?.(saved);
       setStatementJson('');
+      setStatementText('');
       setSuccess(`Saved as revision ${saved.revision}.`);
     } catch (cause) {
       setError(cause);
@@ -414,6 +427,18 @@ export function EntityEditor({
           The Site validates property, datatype, qualifiers, references, rank,
           and statement ID.
         </p>
+        <label>
+          Authored text for this statement revision
+          <textarea
+            value={statementText}
+            onChange={(event) => setStatementText(event.target.value)}
+            required={Boolean(statementJson.trim())}
+          />
+        </label>
+        <p className="ws-hint">
+          Describe this exact revision. Existing text is never reused
+          automatically.
+        </p>
       </details>
       <FormStatus error={error} success={success} />
       <button type="submit" disabled={busy || !dirty}>
@@ -439,6 +464,7 @@ export function StatementEditor({
     selected ? JSON.stringify(selected, null, 2) : '',
   );
   const [rank, setRank] = useState(selected?.rank ?? 'normal');
+  const [revisionText, setRevisionText] = useState('');
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   useUnsavedChanges(Boolean(draft.trim()));
@@ -447,18 +473,19 @@ export function StatementEditor({
     const statement = statements.find((value) => value.id === id);
     setDraft(statement ? JSON.stringify(statement, null, 2) : '');
     setRank(statement?.rank ?? 'normal');
+    setRevisionText('');
   }
   async function mutate(operation: EntityMutationOperation) {
     setBusy(true);
     setError(undefined);
     try {
-      onSaved?.(
-        await client.entities.mutate(
-          entity.id,
-          { operations: [operation] },
-          { expectedRevision: entity.revision },
-        ),
+      const saved = await client.entities.mutate(
+        entity.id,
+        { operations: [operation] },
+        { expectedRevision: entity.revision },
       );
+      onSaved?.(saved);
+      if (operation.op !== 'remove-statement') setRevisionText('');
     } catch (cause) {
       setError(cause);
     } finally {
@@ -466,8 +493,18 @@ export function StatementEditor({
     }
   }
   function parsedStatement(): WaystoneStatement | undefined {
+    if (!revisionText.trim()) {
+      setError(
+        new WaystoneRequestError(
+          'Authored statement text is required for this revision.',
+          { kind: 'validation' },
+        ),
+      );
+      return undefined;
+    }
     try {
-      return JSON.parse(draft) as WaystoneStatement;
+      const statement = JSON.parse(draft) as WaystoneStatement;
+      return { ...statement, text: revisionText };
     } catch {
       setError(
         new WaystoneRequestError('Statement JSON is not valid.', {
@@ -520,10 +557,21 @@ export function StatementEditor({
         Replacing this document adds or removes qualifiers and references
         exactly as shown. The Site performs protocol validation.
       </p>
+      <label>
+        Authored text for this statement revision
+        <textarea
+          value={revisionText}
+          onChange={(event) => setRevisionText(event.target.value)}
+        />
+      </label>
+      <p className="ws-hint">
+        Required for add, replace, rank, qualifier, and reference changes.
+        Existing text is never reused automatically.
+      </p>
       <div className="ws-actions">
         <button
           type="button"
-          disabled={busy || !draft.trim()}
+          disabled={busy || !draft.trim() || !revisionText.trim()}
           onClick={() => {
             const statement = parsedStatement();
             if (statement)
@@ -539,8 +587,15 @@ export function StatementEditor({
         {statementId && (
           <button
             type="button"
-            disabled={busy}
-            onClick={() => void mutate({ op: 'set-rank', statementId, rank })}
+            disabled={busy || !revisionText.trim()}
+            onClick={() =>
+              void mutate({
+                op: 'set-rank',
+                statementId,
+                rank,
+                text: revisionText,
+              })
+            }
           >
             Change rank
           </button>

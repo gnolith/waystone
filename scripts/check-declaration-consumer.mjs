@@ -107,7 +107,6 @@ try {
       '--ignore-scripts',
       '--save-exact',
       archive,
-      '@gnolith/taproot@0.2.0',
       '@types/react@19.2.14',
       'react@19.2.6',
       'react-dom@19.2.6',
@@ -118,7 +117,6 @@ try {
 
   const tree = JSON.parse(run(['ls', '--all', '--json'], consumer));
   const exactVersions = {
-    '@gnolith/taproot': '0.2.0',
     '@gnolith/waystone': '0.1.2',
     '@types/react': '19.2.14',
     react: '19.2.6',

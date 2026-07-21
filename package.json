@@ -60,7 +60,7 @@
     "check": "npm run check:package && npm run consumer:check",
     "check:package": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run verify:package && npm run boundary:check && npm run budgets",
     "boundary:check": "node scripts/check-consumer-boundary.mjs",
-    "consumer:check": "node scripts/check-consumer.mjs && node scripts/check-declaration-consumer.mjs",
+    "consumer:check": "node scripts/check-consumer.mjs && node scripts/check-declaration-consumer.mjs && node scripts/check-taproot-contract.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint src test",
@@ -73,10 +73,15 @@
     "prepack": "npm run check:package"
   },
   "peerDependencies": {
-    "@gnolith/taproot": ">=0.1.0-rc.0 <0.3.0",
+    "@gnolith/taproot": ">=0.3.0 <0.4.0",
     "@types/react": ">=19 <20",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"
+  },
+  "peerDependenciesMeta": {
+    "@gnolith/taproot": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22"
@@ -88,7 +93,6 @@
   "packageManager": "npm@11.9.0",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@gnolith/taproot": "^0.2.0",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.0.0",

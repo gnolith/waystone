@@ -41,6 +41,9 @@ describe('knowledge UI', () => {
     );
     expect(screen.getAllByText('Qualifiers').length).toBeGreaterThan(0);
     expect(screen.getAllByText('References').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText('The specimen is related to the comparison object.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Unknown value')).toBeInTheDocument();
     expect(screen.getByText('No value')).toBeInTheDocument();
   });
@@ -78,7 +81,57 @@ describe('knowledge UI', () => {
     await waitFor(() => expect(saved).toHaveBeenCalled());
     expect(
       screen.getByRole('button', { name: 'Replace statement' }),
-    ).toBeEnabled();
+    ).toBeDisabled();
+  });
+
+  it('requires and preserves newly authored text for statement revisions', async () => {
+    const mutate = vi.fn().mockResolvedValue(fixtureItem);
+    const client = {
+      ...createMockWaystoneClient(),
+      entities: { ...createMockWaystoneClient().entities, mutate },
+    };
+    render(<StatementEditor client={client} entity={fixtureItem} />);
+    const text = screen.getByLabelText(
+      'Authored text for this statement revision',
+    );
+    const replace = screen.getByRole('button', { name: 'Replace statement' });
+    const rank = screen.getByRole('button', { name: 'Change rank' });
+
+    expect(text).toHaveValue('');
+    expect(replace).toBeDisabled();
+    expect(rank).toBeDisabled();
+    fireEvent.change(text, { target: { value: '\u00a0\u2003' } });
+    expect(replace).toBeDisabled();
+    expect(rank).toBeDisabled();
+
+    fireEvent.change(text, {
+      target: { value: '  Confirmed unchanged text  ' },
+    });
+    fireEvent.click(replace);
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+    expect(mutate.mock.calls[0]?.[1]).toMatchObject({
+      operations: [
+        {
+          op: 'replace-statement',
+          statement: { text: '  Confirmed unchanged text  ' },
+        },
+      ],
+    });
+    await waitFor(() => expect(text).toHaveValue(''));
+
+    fireEvent.change(text, { target: { value: 'Changed rank explanation' } });
+    fireEvent.click(rank);
+    await waitFor(() => expect(mutate).toHaveBeenCalledTimes(2));
+    expect(mutate.mock.calls[1]?.[1]).toEqual({
+      operations: [
+        {
+          op: 'set-rank',
+          statementId: fixtureItem.statements.P1?.[0]?.id,
+          rank: 'preferred',
+          text: 'Changed rank explanation',
+        },
+      ],
+    });
   });
   it('renders revision and all SPARQL result kinds', () => {
     const { rerender } = render(<RevisionList revisions={fixtureRevisions} />);

@@ -4,6 +4,10 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+### Changed
+
+- Added mandatory authored text to Waystone and structural Taproot statement revisions. Adapters, HTTP serialization, fixtures, rendering, and mock persistence preserve the text exactly, while mutation editors require a new nonblank confirmation for add, replace, rank, qualifier, and reference changes instead of silently carrying earlier prose.
+
 ## [0.1.2] - 2026-07-21
 
 ### Fixed

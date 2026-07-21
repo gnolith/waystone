@@ -525,6 +525,7 @@ export function Statement({ statement }: { statement: WaystoneStatement }) {
       <div className="ws-statement__value">
         <SnakValue snak={statement.mainsnak} />
       </div>
+      <p className="ws-statement__text">{statement.text}</p>
       <QualifierList qualifiers={statement.qualifiers ?? {}} />
       <ReferenceList references={statement.references ?? []} />
     </article>
