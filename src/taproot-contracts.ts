@@ -4,7 +4,8 @@
  * These deliberately live in Waystone rather than referring to Taproot's
  * declaration entry point. That keeps UI consumers from resolving Taproot's
  * persistence and RDF declaration graph while remaining structurally
- * compatible with the public Taproot 0.2 JSON contract.
+ * compatible with the Taproot 0.3 statement-text contract pinned in
+ * docs/taproot-dependencies.md.
  */
 export type TaprootEntityId = `Q${number}` | `P${number}`;
 export type TaprootReferencedEntityId =

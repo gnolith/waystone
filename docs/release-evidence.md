@@ -1,8 +1,10 @@
-# Package release evidence
+# Historical package release evidence: 0.1.2
 
-Status: **PACKAGE CHECKS PASS; 0.1.2 CANDIDATE NOT TAGGED OR PUBLISHED**
+Status at capture: **PACKAGE CHECKS PASSED; 0.1.2 CANDIDATE WAS NOT YET TAGGED OR PUBLISHED**
 
-This file records evidence attributable to the public `@gnolith/waystone` package. It does not qualify assembly, provisioning, deployment, or acceptance of a complete Gnolith Site.
+> This is an immutable pre-publication snapshot retained for the 0.1.2 audit trail. It does not describe the current development branch, current test count, current Taproot peer floor, or current package archive. Current compatibility is defined by [Taproot integration](taproot-dependencies.md), [Upgrade policy](upgrades.md), the package manifest, and the latest successful `npm run check`. The current line supersedes the Taproot 0.2 and 23-test evidence below with an optional `>=0.3.0 <0.4.0` peer, 34 repository tests, and exact packed conformance against Taproot commit `38b97616da07ee349cf30877653acd84d1689139`.
+
+This file records historical evidence attributable to the 0.1.2 `@gnolith/waystone` candidate. It does not qualify assembly, provisioning, deployment, or acceptance of a complete Gnolith Site.
 
 Package-owned evidence refreshed locally on 2026-07-21 for the `0.1.2` candidate:
 
@@ -24,9 +26,9 @@ Package-owned evidence refreshed locally on 2026-07-21 for the `0.1.2` candidate
 
 The published 0.1.1 package works at runtime, but its declarations referenced React types without declaring `@types/react` as a peer and re-exported Taproot root types. A strict TypeScript 5.9 `NodeNext` consumer using `skipLibCheck: false` could fail on missing React declarations or in Taproot's transitive Diamond/Comunica/`rdf-parse`/`lru-cache` declarations. Candidate 0.1.2 corrects both declaration-package boundaries without changing adapter runtime behavior.
 
-## Package evidence boundaries
+## Historical package evidence boundaries
 
-| Gate                            | Current evidence                                                                                                                           |
+| Gate                            | Evidence captured for the 0.1.2 candidate                                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Clean package check             | `npm run check` passed locally with the toolchain and coverage counts above.                                                               |
 | Public exports and declarations | Every public entry resolves; exact packed TS and TSX consumers pass strict TypeScript without resolving forbidden transitive declarations. |
