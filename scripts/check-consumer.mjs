@@ -22,22 +22,22 @@ function run(args, cwd = process.cwd()) {
 
 const packed = JSON.parse(run(['pack', '--ignore-scripts', '--json']));
 const archive = path.resolve(packed[0].filename);
-const sourceCanary = path.resolve('examples/codex-site-canary');
+const sourceFixture = path.resolve('examples/codex-site-canary');
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'waystone-consumer-'));
-const canary = path.join(temporaryRoot, 'codex-site-canary');
+const consumer = path.join(temporaryRoot, 'isolated-consumer');
 
 try {
-  cpSync(sourceCanary, canary, {
+  cpSync(sourceFixture, consumer, {
     recursive: true,
     filter(source) {
       const name = path.basename(source);
-      return name !== 'node_modules' && name !== '.vinext';
+      return name !== 'node_modules' && name !== '.vinext' && name !== 'vendor';
     },
   });
-  run(['install', '--ignore-scripts', '--save-exact', archive], canary);
-  process.stdout.write(run(['test'], canary));
+  run(['install', '--ignore-scripts', '--save-exact', archive], consumer);
+  process.stdout.write(run(['test'], consumer));
   console.log(
-    `Fresh isolated consumer verified from ${path.basename(archive)}.`,
+    `Exact Waystone archive verified in an isolated consumer: ${path.basename(archive)}.`,
   );
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });

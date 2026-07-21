@@ -4,7 +4,7 @@ import {
   fixtureMissingLabel,
   fixtureRedirect,
 } from '@gnolith/waystone/fixtures';
-import { LiveEntity } from '../../live-entity';
+import { FixtureEntity } from '../../fixture-entity';
 
 export default async function EntityRoute({
   params,
@@ -20,5 +20,5 @@ export default async function EntityRoute({
         : id === 'Q4'
           ? fixtureRedirect
           : fixtureItem;
-  return <LiveEntity id={id} fallback={entity} />;
+  return <FixtureEntity entity={entity} />;
 }

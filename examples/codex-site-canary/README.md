@@ -1,10 +1,10 @@
-# Waystone Codex Sites canary
+# Waystone isolated consumer
 
-This multi-route vinext/Vite application is the package consumer, server-rendering fixture, and Cloudflare Worker deployment canary for `@gnolith/waystone`.
+This multi-route vinext/Vite application verifies the exact packed `@gnolith/waystone` artifact in a fresh local consumer. It is a package build and server-rendering fixture, not a complete Gnolith Site or a deployment canary.
 
-The release check packs Waystone, copies this canary into an isolated temporary directory, installs the exact archive there, builds the production Worker, and server-renders `/`, `/onboarding`, `/entities`, `/entities/Q1`, `/properties/P1`, and `/sparql`. The rendered tests prove both the generic fixture contract and the packed Workshop UI plugin through public exports only.
+The release check packs Waystone, copies this fixture into an isolated temporary directory, installs the exact archive there, builds the consumer, and server-renders `/`, `/onboarding`, `/entities`, `/entities/Q1`, `/properties/P1`, and `/sparql`. The rendered tests exercise Waystone public exports, CSS, representative components, the mock client, and the package-owned plugin fixture.
 
-Fixtures keep ordinary package development deterministic. Production evidence comes from the generated-style Site APIs in `app/api`: Taproot owns canonical entity mutation and revision behavior over managed D1, while Diamond and Comunica provide the read-only SPARQL path. The deployed matrix covers live browsing, mutation, stale-revision conflict, history, search, validation, dry-run, and query behavior.
+The fixture deliberately has no Diamond, Taproot, Workshop, managed database, hosting project, authentication, or deployment dependency. The Codex agent creating a complete Site owns package assembly, generated APIs, provisioning, runtime configuration, deployment, and live acceptance.
 
 ```sh
 # From the repository root
@@ -16,4 +16,4 @@ npm install ../../gnolith-waystone-0.1.0.tgz --save-exact
 npm test
 ```
 
-The production Cloudflare configuration deliberately contains no Node compatibility flag. Current local vinext development middleware uses `nodejs_compat` only while `vite` is serving the preview; this does not enter the production build configuration.
+These commands establish only local consumer build and SSR behavior attributable to the Waystone package. They do not qualify a deployed host.

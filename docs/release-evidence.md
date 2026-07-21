@@ -1,30 +1,28 @@
-# Release evidence
+# Package release evidence
 
-Status: **GO**
+Status: **PACKAGE CHECKS PASS**
 
-Release-candidate evidence recorded on 2026-07-20 for `@gnolith/waystone@0.1.0`.
+This file records evidence attributable to the published `@gnolith/waystone` package. Refresh it from a clean release candidate before publishing.
 
-| Gate                                                  | Evidence                                                                                                                                                                                                                                  | Result |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Clean package check                                   | `npm run check` passed formatting, lint, strict TypeScript, 22 unit/component tests, coverage, build, package verification, bundle budgets, and the fresh-consumer check.                                                                 | Pass   |
-| Public exports and declarations                       | Package verification imported every public entry point, resolved declarations and compiled CSS, checked export targets, and rejected client/server boundary violations.                                                                   | Pass   |
-| Exact tarball and fresh consumer                      | `npm pack` contents passed the allowlist; archive shasum `1c4e443202d653f38862a190d47139841267b166` was installed into an isolated copy of the canary and used without workspace aliases.                                                 | Pass   |
-| vinext/Vite production build and SSR                  | The fresh consumer built all application and API routes. Seven rendered-HTML tests passed for `/`, onboarding, browse, entity, property, SPARQL, and the real Workshop UI plugin.                                                         | Pass   |
-| Worker deployment without Node compatibility          | Sites version 6 (`appgprj_6a5ebc36cbb88191ae4e84554992b4ef~appgver_529349a9babc8191af12b8961bcd3b0a`) deployed source commit `cb8bd5b46b464fb20025feed2264c8cffeb9fe7e` successfully with empty production compatibility flags.           | Pass   |
-| Live Taproot browse, revision, mutation, and conflict | The version 6 API read Q2 at revision 2, accepted an `If-Match` mutation to revision 3, returned the three-revision history, and rejected the stale revision with the expected 409 conflict. Search returned three live entities.         | Pass   |
-| Live SPARQL validate, dry run, and query              | Deployed validation succeeded; dry-run returned two rows; the Diamond/Comunica-backed query returned two `bindings` rows.                                                                                                                 | Pass   |
-| Workshop public-contract integration                  | The canary installs a packed `@gnolith/workshop@0.1.0` artifact, imports only `@gnolith/workshop/ui`, registers `workshopPlugin`, and renders its Tasks, Memories, and entity-panel contributions. Waystone does not import Workshop.     | Pass   |
-| Server rendering and client hydration                 | Deployed SSR rendered the authenticated canary through a private-site bypass. Local browser verification exercised live hydration after the same production build; the production API now serves Q2 revision 3 and the saved description. | Pass   |
-| Browser console and Worker logs                       | Browser smoke produced no material console errors. The final error-only Worker-log query contained only the intentionally induced stale-write 409; its Worker outcome was `ok` and no exception was recorded.                             | Pass   |
-| Documentation                                         | README and the API-client, plugin, styling, accessibility, Sites, release, troubleshooting, upgrade, and Taproot dependency guides match the 0.1.0 public contract.                                                                       | Pass   |
+Package-owned evidence refreshed locally on 2026-07-20:
 
-Private production canary: <https://gnolith-waystone-canary.kcsfelty.chatgpt.site>
+- Node `v24.14.0` and npm `11.9.0`.
+- ESLint and strict TypeScript passed.
+- All 22 unit, component, adapter, plugin, conflict, and accessibility tests passed with coverage above the configured thresholds.
+- Public export, declaration, CSS, runtime-graph, tarball allowlist, React-external, and bundle-budget checks passed.
+- The exact archive installed into a fresh temporary consumer; its vinext build completed and all seven SSR and fixture-plugin tests passed.
+- Archive `gnolith-waystone-0.1.0.tgz`: shasum `580223e678fbd12edc75b378ae38f93d6ba7c93e`; integrity `sha512-tQ0LJJkWhLy7A0iXv1pJJtOKeJJs8uYW6qf30llU3bnkuVgQ++y9oFEex7btR1QSeOPJho21/+Y1ibc1+m1nZA==`.
+- Production-dependency audit for the isolated consumer reported zero vulnerabilities.
 
-The canary is protected by Sign in with ChatGPT. Direct unattended browser access
-therefore stops at the expected access screen; authenticated production SSR was
-verified through the private-site bypass, while live browser hydration and all
-production API behaviors were verified separately.
+The full `npm run check` command passed on the Windows verification checkout after the repository's LF policy was made explicit for Markdown, JSON, and YAML files.
 
-Observed package bundle sizes (minified ESM, React external): server-safe root
-8,152 bytes; client shell 3,969 bytes; SPARQL editor 5,385 bytes; entity editor
-7,727 bytes. All are below the documented budgets.
+| Gate                            | Required evidence                                                                                                                                                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clean package check             | Commit, Node/npm versions, and successful `npm ci && npm run check` output covering formatting, lint, strict TypeScript, unit/component/accessibility tests, coverage, build, package verification, bundle budgets, and the isolated consumer. |
+| Public exports and declarations | Every public entry point imports, declarations and compiled CSS resolve, the server-safe root cannot reach client modules, and runtime graphs contain no Node or Cloudflare imports.                                                           |
+| Exact tarball                   | Package filename, version, shasum and integrity from `npm pack --json`, plus the verified tarball allowlist.                                                                                                                                   |
+| Isolated consumer build and SSR | The exact archive installs into a fresh temporary consumer with no workspace alias; representative routes build and server-render through public exports using the package mock client and fixture plugin.                                     |
+| Bundle budgets                  | Minified ESM sizes with React external and all documented budgets passing.                                                                                                                                                                     |
+| Documentation                   | Public API, styling, accessibility, integration, release, troubleshooting, upgrade, and Taproot dependency guides match the package contract.                                                                                                  |
+
+This repository does not record or gate on a complete Site's project identity, package assembly, provisioning, bindings, migrations, compatibility flags, deployment, authentication, live D1 or SPARQL behavior, browser state, logs, request IDs, URLs, or host acceptance. The Codex agent creating the Site owns that run evidence.
