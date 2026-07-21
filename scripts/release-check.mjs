@@ -15,10 +15,12 @@ const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8');
 const failures = [];
 
 const packCommand = 'npm pack --ignore-scripts';
-const dryRunCommand =
-  'npm publish "$archive" --dry-run --ignore-scripts --access public';
 const publishCommand =
-  'npm publish "${{ steps.package.outputs.archive }}" --ignore-scripts --access public --provenance';
+  'npm publish "$ARCHIVE" --ignore-scripts --access public --provenance';
+const stageJobIndex = releaseWorkflow.indexOf('\n  stage:');
+const publishJobIndex = releaseWorkflow.indexOf('\n  publish:');
+const stageJob = releaseWorkflow.slice(stageJobIndex, publishJobIndex);
+const publishJob = releaseWorkflow.slice(publishJobIndex);
 
 const requireCondition = (condition, message) => {
   if (!condition) failures.push(message);
@@ -74,20 +76,48 @@ requireCondition(
   'Release workflow must have exactly the GitHub Release published trigger.',
 );
 requireCondition(
-  releaseWorkflow.includes('id-token: write') &&
-    releaseWorkflow.includes('environment: npm') &&
-    releaseWorkflow.includes(packCommand) &&
-    releaseWorkflow.includes(dryRunCommand) &&
-    releaseWorkflow.includes(publishCommand) &&
-    releaseWorkflow.indexOf(packCommand) <
-      releaseWorkflow.indexOf(publishCommand) &&
+  stageJobIndex >= 0 &&
+    publishJobIndex > stageJobIndex &&
+    stageJob.includes('npm run check') &&
+    stageJob.includes(packCommand) &&
+    stageJob.includes('sha256sum') &&
+    stageJob.includes('archive="waystone-${version}-${digest}.tgz"') &&
+    stageJob.includes('artifact=waystone-${digest}') &&
+    stageJob.includes('package_name=$package_name') &&
+    stageJob.includes('version=$version') &&
+    stageJob.includes('npm publish "$archive" --dry-run --ignore-scripts') &&
+    stageJob.includes(
+      'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
+    ) &&
+    publishJob.includes('needs: stage') &&
+    publishJob.includes('environment: npm') &&
+    publishJob.includes('id-token: write') &&
+    publishJob.includes(
+      'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093',
+    ) &&
+    !publishJob.includes('actions/checkout@') &&
+    !publishJob.includes('npm run ') &&
+    !publishJob.includes('npm pack ') &&
+    publishJob.includes('EXPECTED_DIGEST: ${{ needs.stage.outputs.digest }}') &&
+    publishJob.includes(
+      'EXPECTED_PACKAGE_NAME: ${{ needs.stage.outputs.package_name }}',
+    ) &&
+    publishJob.includes(
+      'EXPECTED_VERSION: ${{ needs.stage.outputs.version }}',
+    ) &&
+    publishJob.includes('test -f "$archive"') &&
+    publishJob.includes('test ! -L "$archive"') &&
+    publishJob.includes('sha256sum "$archive"') &&
+    publishJob.includes('tar -tvzf "$archive"') &&
+    publishJob.includes('package/package.json') &&
+    publishJob.includes('archive="$(realpath "$archive")"') &&
+    publishJob.includes('echo "archive=$archive" >> "$GITHUB_OUTPUT"') &&
+    publishJob.includes(publishCommand) &&
     (releaseWorkflow.match(/NODE_AUTH_TOKEN:/g) ?? []).length === 1 &&
     (releaseWorkflow.match(/secrets\.NPM_BOOTSTRAP_TOKEN/g) ?? []).length ===
       1 &&
-    releaseWorkflow.includes('NODE_AUTH_TOKEN:') &&
-    releaseWorkflow.includes('secrets.NPM_BOOTSTRAP_TOKEN') &&
     releaseWorkflow.includes('TAG: ${{ github.event.release.tag_name }}'),
-  'Release workflow must stage and verify one token-free archive, then publish that exact archive without lifecycle scripts from the sole credential-bearing step.',
+  'Release workflow must pass a content-addressed archive from a token-free stage job to a fresh protected job that revalidates it and only publishes the absolute archive without lifecycle scripts.',
 );
 
 const immutableTags = new Map([

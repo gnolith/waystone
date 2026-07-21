@@ -6,12 +6,16 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
+  stage:
     runs-on: ubuntu-latest
-    environment: npm
+    outputs:
+      archive: ${{ steps.package.outputs.archive }}
+      artifact: ${{ steps.package.outputs.artifact }}
+      digest: ${{ steps.package.outputs.digest }}
+      package_name: ${{ steps.package.outputs.package_name }}
+      version: ${{ steps.package.outputs.version }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -29,12 +33,73 @@ jobs:
         id: package
         shell: bash
         run: |
-          archive="$(npm pack --ignore-scripts)"
-          test -f "$archive"
+          source_archive="$(npm pack --ignore-scripts)"
+          test -f "$source_archive"
+          package_name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          digest="$(sha256sum "$source_archive" | cut -d ' ' -f 1)"
+          archive="waystone-${version}-${digest}.tgz"
+          mv -- "$source_archive" "$archive"
           npm publish "$archive" --dry-run --ignore-scripts --access public
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
-      - name: Publish staged archive with provenance
-        run: npm publish "${{ steps.package.outputs.archive }}" --ignore-scripts --access public --provenance
+          echo "artifact=waystone-${digest}" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "package_name=$package_name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Upload content-addressed publication archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ steps.package.outputs.artifact }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  publish:
+    needs: stage
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Download content-addressed publication archive
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.stage.outputs.artifact }}
+          path: ${{ runner.temp }}/waystone-package
+      - name: Revalidate publication archive
+        id: verify
+        shell: bash
         env:
+          EXPECTED_ARCHIVE: ${{ needs.stage.outputs.archive }}
+          EXPECTED_DIGEST: ${{ needs.stage.outputs.digest }}
+          EXPECTED_PACKAGE_NAME: ${{ needs.stage.outputs.package_name }}
+          EXPECTED_VERSION: ${{ needs.stage.outputs.version }}
+        run: |
+          root="$RUNNER_TEMP/waystone-package"
+          test "$(find "$root" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1
+          archive="$root/$EXPECTED_ARCHIVE"
+          test -f "$archive"
+          test ! -L "$archive"
+          archive="$(realpath "$archive")"
+          case "$archive" in "$root"/*) ;; *) exit 1 ;; esac
+          test "$(basename "$archive")" = "$EXPECTED_ARCHIVE"
+          test "$(sha256sum "$archive" | cut -d ' ' -f 1)" = "$EXPECTED_DIGEST"
+          tar -tvzf "$archive" | awk 'substr($1, 1, 1) != "-" && substr($1, 1, 1) != "d" { exit 1 }'
+          manifest="$(tar -xOzf "$archive" package/package.json)"
+          actual_name="$(printf '%s' "$manifest" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>process.stdout.write(JSON.parse(s).name))")"
+          actual_version="$(printf '%s' "$manifest" | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>process.stdout.write(JSON.parse(s).version))")"
+          test "$actual_name" = "$EXPECTED_PACKAGE_NAME"
+          test "$actual_version" = "$EXPECTED_VERSION"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+      - name: Publish revalidated archive with provenance
+        run: npm publish "$ARCHIVE" --ignore-scripts --access public --provenance
+        env:
+          ARCHIVE: ${{ steps.verify.outputs.archive }}
           # Remove after the first publish and npm trusted-publisher binding.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
