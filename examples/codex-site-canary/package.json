@@ -1,6 +1,6 @@
 {
   "name": "@gnolith/waystone-isolated-consumer",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
   "dependencies": {
-    "@gnolith/waystone": "file:../../gnolith-waystone-0.1.2.tgz",
+    "@gnolith/waystone": "file:../../gnolith-waystone-0.2.0.tgz",
     "next": "16.2.11",
     "react": "19.2.6",
     "react-dom": "19.2.6"
