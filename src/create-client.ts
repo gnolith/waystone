@@ -12,6 +12,22 @@ import type {
   EntitySearchResult,
   EntityRevisionPage,
   CreateEntityInput,
+  AnnotationInput,
+  AnnotationRecord,
+  BackfillEstimate,
+  HostOperation,
+  HostOperationKind,
+  PromptInput,
+  PromptRecord,
+  ResourceInput,
+  ResourceRecord,
+  RevisionPage,
+  SearchHealth,
+  SearchRunAction,
+  UnifiedSearchInput,
+  UnifiedSearchPage,
+  TaskRecord,
+  MemoryRecord,
 } from './model.js';
 import {
   fromTaprootEntity,
@@ -32,6 +48,24 @@ export interface WaystoneApiPaths {
   sparql: string;
   sparqlValidate: string;
   sparqlDryRun: string;
+  search: string;
+  searchHealth: string;
+  searchAdmin: string;
+  resources: string;
+  resource(id: string): string;
+  resourceRevision(id: string, revision: number): string;
+  resourceRevisions(id: string): string;
+  annotations: string;
+  annotation(id: string): string;
+  annotationRevision(id: string, revision: number): string;
+  annotationRevisions(id: string): string;
+  prompts: string;
+  prompt(id: string): string;
+  promptRevision(id: string, revision: number): string;
+  promptRevisions(id: string): string;
+  task(id: string): string;
+  memory(id: string): string;
+  hostOperations: string;
 }
 export interface CreateWaystoneClientOptions {
   baseUrl?: string | URL;
@@ -55,6 +89,29 @@ const defaultPaths: WaystoneApiPaths = {
   sparql: '/api/sparql',
   sparqlValidate: '/api/sparql/validate',
   sparqlDryRun: '/api/sparql/dry-run',
+  search: '/api/search',
+  searchHealth: '/api/search/health',
+  searchAdmin: '/api/search/admin',
+  resources: '/api/resources',
+  resource: (id) => `/api/resources/${encodeURIComponent(id)}`,
+  resourceRevision: (id, revision) =>
+    `/api/resources/${encodeURIComponent(id)}/revisions/${revision}`,
+  resourceRevisions: (id) =>
+    `/api/resources/${encodeURIComponent(id)}/revisions`,
+  annotations: '/api/annotations',
+  annotation: (id) => `/api/annotations/${encodeURIComponent(id)}`,
+  annotationRevision: (id, revision) =>
+    `/api/annotations/${encodeURIComponent(id)}/revisions/${revision}`,
+  annotationRevisions: (id) =>
+    `/api/annotations/${encodeURIComponent(id)}/revisions`,
+  prompts: '/api/prompts',
+  prompt: (id) => `/api/prompts/${encodeURIComponent(id)}`,
+  promptRevision: (id, revision) =>
+    `/api/prompts/${encodeURIComponent(id)}/revisions/${revision}`,
+  promptRevisions: (id) => `/api/prompts/${encodeURIComponent(id)}/revisions`,
+  task: (id) => `/api/tasks/${encodeURIComponent(id)}`,
+  memory: (id) => `/api/memories/${encodeURIComponent(id)}`,
+  hostOperations: '/api/operations',
 };
 
 function resolveUrl(
@@ -226,6 +283,52 @@ export function createWaystoneClient(
       : {}),
   });
 
+  const contentCollection = <TRecord, TInput>(config: {
+    collection: string;
+    item(id: string): string;
+    revision(id: string, revision: number): string;
+    revisions(id: string): string;
+  }) => ({
+    get(id: string, requestOptions?: RequestOptions) {
+      return request<TRecord>(config.item(id), {}, requestOptions);
+    },
+    getRevision(id: string, revision: number, requestOptions?: RequestOptions) {
+      return request<TRecord>(
+        config.revision(id, revision),
+        {},
+        requestOptions,
+      );
+    },
+    listRevisions(id: string, requestOptions?: RequestOptions) {
+      return request<RevisionPage>(config.revisions(id), {}, requestOptions);
+    },
+    create(input: TInput, requestOptions?: RequestOptions) {
+      return request<TRecord>(
+        config.collection,
+        mutation('POST', input),
+        requestOptions,
+      );
+    },
+    update(id: string, input: TInput, mutationOptions?: MutationOptions) {
+      return request<TRecord>(
+        config.item(id),
+        mutation('PATCH', input, mutationOptions),
+        mutationOptions,
+      );
+    },
+  });
+
+  const adminAction = <T = SearchHealth>(
+    action: string,
+    body: unknown = {},
+    requestOptions?: RequestOptions,
+  ) =>
+    request<T>(
+      `${paths.searchAdmin}/${action}`,
+      mutation('POST', body),
+      requestOptions,
+    );
+
   return {
     entities: {
       search(input: EntitySearchInput, requestOptions?: RequestOptions) {
@@ -337,6 +440,112 @@ export function createWaystoneClient(
         return request<SparqlQueryResult>(
           paths.sparql,
           mutation('POST', { query }),
+          requestOptions,
+        );
+      },
+    },
+    search: {
+      query(input: UnifiedSearchInput, requestOptions?: RequestOptions) {
+        if (!input.query.trim())
+          throw new WaystoneRequestError('A search query is required.', {
+            kind: 'validation',
+          });
+        if (
+          input.pageSize !== undefined &&
+          (!Number.isInteger(input.pageSize) ||
+            input.pageSize < 1 ||
+            input.pageSize > 100)
+        )
+          throw new WaystoneRequestError(
+            'Search page size must be between 1 and 100.',
+            { kind: 'validation' },
+          );
+        const query = new URLSearchParams({ q: input.query });
+        for (const kind of input.kinds ?? []) query.append('kind', kind);
+        if (input.cursor) query.set('cursor', input.cursor);
+        if (input.pageSize !== undefined)
+          query.set('pageSize', String(input.pageSize));
+        for (const [key, value] of Object.entries(input.filters ?? {}))
+          if (typeof value === 'string' && value) query.set(key, value);
+        return request<UnifiedSearchPage>(
+          resolveUrl(undefined, paths.search, query),
+          {},
+          requestOptions,
+        );
+      },
+      health(requestOptions?: RequestOptions) {
+        return request<SearchHealth>(paths.searchHealth, {}, requestOptions);
+      },
+      admin: {
+        estimateBackfill(requestOptions?: RequestOptions) {
+          return adminAction<BackfillEstimate>('estimate', {}, requestOptions);
+        },
+        approveBackfill(estimateId: string, requestOptions?: RequestOptions) {
+          return adminAction('approve', { estimateId }, requestOptions);
+        },
+        selectConfiguration(id: string, requestOptions?: RequestOptions) {
+          return adminAction('configuration/select', { id }, requestOptions);
+        },
+        control(action: SearchRunAction, requestOptions?: RequestOptions) {
+          return adminAction('run', { action }, requestOptions);
+        },
+        retryFailure(id: string, requestOptions?: RequestOptions) {
+          return adminAction('failure/retry', { id }, requestOptions);
+        },
+        excludeFailure(id: string, requestOptions?: RequestOptions) {
+          return adminAction('failure/exclude', { id }, requestOptions);
+        },
+        reconnectCircuit(id: string, requestOptions?: RequestOptions) {
+          return adminAction('circuit/reconnect', { id }, requestOptions);
+        },
+        retireConfiguration(id: string, requestOptions?: RequestOptions) {
+          return adminAction('configuration/retire', { id }, requestOptions);
+        },
+        deleteEmbeddings(id: string, requestOptions?: RequestOptions) {
+          return adminAction('embeddings/delete', { id }, requestOptions);
+        },
+      },
+    },
+    resources: contentCollection<ResourceRecord, ResourceInput>({
+      collection: paths.resources,
+      item: paths.resource,
+      revision: paths.resourceRevision,
+      revisions: paths.resourceRevisions,
+    }),
+    annotations: contentCollection<AnnotationRecord, AnnotationInput>({
+      collection: paths.annotations,
+      item: paths.annotation,
+      revision: paths.annotationRevision,
+      revisions: paths.annotationRevisions,
+    }),
+    prompts: contentCollection<PromptRecord, PromptInput>({
+      collection: paths.prompts,
+      item: paths.prompt,
+      revision: paths.promptRevision,
+      revisions: paths.promptRevisions,
+    }),
+    tasks: {
+      get(id: string, requestOptions?: RequestOptions) {
+        return request<TaskRecord>(paths.task(id), {}, requestOptions);
+      },
+    },
+    memories: {
+      get(id: string, requestOptions?: RequestOptions) {
+        return request<MemoryRecord>(paths.memory(id), {}, requestOptions);
+      },
+    },
+    hostOperations: {
+      list(requestOptions?: RequestOptions) {
+        return request<readonly HostOperation[]>(
+          paths.hostOperations,
+          {},
+          requestOptions,
+        );
+      },
+      start(kind: HostOperationKind, requestOptions?: RequestOptions) {
+        return request<HostOperation>(
+          paths.hostOperations,
+          mutation('POST', { kind }),
           requestOptions,
         );
       },

@@ -13,11 +13,31 @@ import {
 } from './components.js';
 import { EntitySearch, SparqlEditor } from './client-components.js';
 import {
+  AnnotationEditor,
+  HostOperationsPanel,
+  PromptEditor,
+  ResourceEditor,
+  SearchAdministration,
+  UnifiedSearchScreen,
+} from './knowledge-client-components.js';
+import {
+  AnnotationView,
+  ContentHistory,
+  PromptView,
+  ResourceView,
+} from './knowledge-components.js';
+import {
   WaystoneExtensionPoint,
   WaystonePluginProvider,
 } from './plugin-components.js';
 import type {
   EntityRevisionMetadata,
+  AnnotationRecord,
+  ContentRevisionMetadata,
+  HostOperation,
+  PromptRecord,
+  ResourceRecord,
+  SearchHealth,
   WaystoneClient,
   WaystoneObservability,
   WaystoneSessionDisplay,
@@ -27,6 +47,7 @@ import type { WaystoneRegistry } from './plugin-contracts.js';
 
 const baseNavigation: WaystoneNavigationItem[] = [
   { id: 'home', label: 'Home', href: '/' },
+  { id: 'search', label: 'Search', href: '/search' },
   { id: 'entities', label: 'Entities', href: '/entities' },
   { id: 'sparql', label: 'SPARQL', href: '/sparql' },
 ];
@@ -387,4 +408,88 @@ export function SparqlPage({ client }: { client: WaystoneClient }) {
       <SparqlEditor client={client} />
     </div>
   );
+}
+
+export function SearchPage({ client }: { client: WaystoneClient }) {
+  return <UnifiedSearchScreen client={client} />;
+}
+
+export function ResourcePage({
+  client,
+  resource,
+  revisions = [],
+  editable = false,
+}: {
+  client: WaystoneClient;
+  resource: ResourceRecord;
+  revisions?: readonly ContentRevisionMetadata[];
+  editable?: boolean;
+}) {
+  return (
+    <div>
+      <ResourceView resource={resource} />
+      {editable && <ResourceEditor client={client} resource={resource} />}
+      <ContentHistory revisions={revisions} />
+    </div>
+  );
+}
+
+export function AnnotationPage({
+  client,
+  annotation,
+  revisions = [],
+  editable = false,
+}: {
+  client: WaystoneClient;
+  annotation: AnnotationRecord;
+  revisions?: readonly ContentRevisionMetadata[];
+  editable?: boolean;
+}) {
+  return (
+    <div>
+      <AnnotationView annotation={annotation} />
+      {editable && <AnnotationEditor client={client} annotation={annotation} />}
+      <ContentHistory revisions={revisions} />
+    </div>
+  );
+}
+
+export function PromptPage({
+  client,
+  prompt,
+  revisions = [],
+  editable = false,
+}: {
+  client: WaystoneClient;
+  prompt: PromptRecord;
+  revisions?: readonly ContentRevisionMetadata[];
+  editable?: boolean;
+}) {
+  return (
+    <div>
+      <PromptView prompt={prompt} />
+      {editable && <PromptEditor client={client} prompt={prompt} />}
+      <ContentHistory revisions={revisions} />
+    </div>
+  );
+}
+
+export function SearchOperationsPage({
+  client,
+  health,
+}: {
+  client: WaystoneClient;
+  health: SearchHealth;
+}) {
+  return <SearchAdministration client={client} health={health} />;
+}
+
+export function SiteDataOperationsPage({
+  client,
+  operations = [],
+}: {
+  client: WaystoneClient;
+  operations?: readonly HostOperation[];
+}) {
+  return <HostOperationsPanel client={client} initialOperations={operations} />;
 }

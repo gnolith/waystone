@@ -221,6 +221,28 @@ export interface WaystoneClient {
     dryRun(query: string, options?: RequestOptions): Promise<SparqlQueryResult>;
     query(query: string, options?: RequestOptions): Promise<SparqlQueryResult>;
   };
+  search: {
+    query(
+      input: UnifiedSearchInput,
+      options?: RequestOptions,
+    ): Promise<UnifiedSearchPage>;
+    health(options?: RequestOptions): Promise<SearchHealth>;
+    admin: SearchAdminClient;
+  };
+  resources: ContentCollection<ResourceRecord, ResourceInput>;
+  annotations: ContentCollection<AnnotationRecord, AnnotationInput>;
+  prompts: ContentCollection<PromptRecord, PromptInput>;
+  tasks: { get(id: string, options?: RequestOptions): Promise<TaskRecord> };
+  memories: {
+    get(id: string, options?: RequestOptions): Promise<MemoryRecord>;
+  };
+  hostOperations: {
+    list(options?: RequestOptions): Promise<readonly HostOperation[]>;
+    start(
+      kind: HostOperationKind,
+      options?: RequestOptions,
+    ): Promise<HostOperation>;
+  };
 }
 
 export interface WaystoneCapabilities {
@@ -229,6 +251,11 @@ export interface WaystoneCapabilities {
   deleteEntity?: boolean;
   revertRevision?: boolean;
   querySparql?: boolean;
+  searchAdmin?: boolean;
+  editResources?: boolean;
+  editAnnotations?: boolean;
+  editPrompts?: boolean;
+  hostOperations?: boolean;
 }
 export interface WaystoneSessionDisplay {
   displayName?: string;
@@ -262,4 +289,280 @@ export interface AsyncStateProps {
   error?: unknown;
   permissionDenied?: boolean;
   children?: ReactNode;
+}
+
+/** The single set of independently ranked kinds returned by unified search. */
+export const SEARCH_KINDS = [
+  'statement',
+  'item',
+  'task',
+  'memory',
+  'prompt',
+  'resource',
+  'annotation',
+] as const;
+export type SearchKind = (typeof SEARCH_KINDS)[number];
+
+export interface UnifiedSearchFilters {
+  language?: string;
+  itemId?: string;
+  resourceId?: string;
+  mediaType?: string;
+  motivation?: string;
+  selectorType?: string;
+}
+export interface UnifiedSearchInput {
+  query: string;
+  kinds?: readonly SearchKind[];
+  filters?: UnifiedSearchFilters;
+  cursor?: string;
+  /** Hosts must enforce their own bound; Waystone sends a value from 1 through 100. */
+  pageSize?: number;
+}
+export interface SearchResultBase {
+  kind: SearchKind;
+  canonicalId: string;
+  revision: number;
+  score: number;
+  snippet?: string;
+  language?: string;
+  contributingStatementIds?: readonly string[];
+}
+export interface StatementSearchResult extends SearchResultBase {
+  kind: 'statement';
+  statementId: string;
+  itemId: string;
+}
+export interface ItemSearchResult extends SearchResultBase {
+  kind: 'item';
+  itemId: string;
+  label?: string;
+}
+export interface TaskSearchResult extends SearchResultBase {
+  kind: 'task';
+  taskId: string;
+  title?: string;
+}
+export interface MemorySearchResult extends SearchResultBase {
+  kind: 'memory';
+  memoryId: string;
+  title?: string;
+}
+export interface PromptSearchResult extends SearchResultBase {
+  kind: 'prompt';
+  promptId: string;
+  title?: string;
+}
+export interface ResourceSearchResult extends SearchResultBase {
+  kind: 'resource';
+  resourceId: string;
+  title?: string;
+  mediaType?: string;
+  selector?: ContentSelector;
+}
+export interface AnnotationSearchResult extends SearchResultBase {
+  kind: 'annotation';
+  annotationId: string;
+  targetId: string;
+  motivation?: string;
+  selector?: ContentSelector;
+}
+export type UnifiedSearchResult =
+  | StatementSearchResult
+  | ItemSearchResult
+  | TaskSearchResult
+  | MemorySearchResult
+  | PromptSearchResult
+  | ResourceSearchResult
+  | AnnotationSearchResult;
+export type SearchReadinessMode = 'lexical-only' | 'semantic-augmented';
+export interface UnifiedSearchPage {
+  results: UnifiedSearchResult[];
+  nextCursor?: string;
+  readiness: SearchReadinessMode;
+  degraded?: boolean;
+  notice?: string;
+}
+
+export type ContentSelector =
+  | { type: 'text-quote'; exact: string; prefix?: string; suffix?: string }
+  | { type: 'text-position'; start: number; end: number }
+  | { type: 'fragment'; value: string }
+  | { type: string; value?: string };
+export interface ContentRevisionMetadata {
+  revision: number;
+  timestamp: string;
+  author?: string;
+  summary?: string;
+}
+export interface ResourceRecord {
+  id: string;
+  revision: number;
+  title?: string;
+  linkedItemIds?: readonly string[];
+  metadata?: Readonly<Record<string, string>>;
+  integrity?: string;
+  location?: string;
+  body?: string;
+  language?: string;
+  mediaType?: string;
+  selectedExcerpt?: string;
+  modified?: string;
+}
+export interface ResourceInput {
+  title?: string;
+  linkedItemIds?: readonly string[];
+  metadata?: Readonly<Record<string, string>>;
+  integrity?: string;
+  location?: string;
+  body?: string;
+  language?: string;
+  mediaType?: string;
+  selectedExcerpt?: string;
+}
+export interface AnnotationBodyResource {
+  resourceId: string;
+}
+export interface AnnotationRecord {
+  id: string;
+  revision: number;
+  body?: string;
+  bodyResource?: AnnotationBodyResource;
+  targetId: string;
+  selector?: ContentSelector;
+  motivation?: string;
+  attributedTo?: string;
+  language?: string;
+  mediaType?: string;
+  inheritedVisibility?: string;
+  modified?: string;
+}
+export interface AnnotationInput {
+  body?: string;
+  bodyResource?: AnnotationBodyResource;
+  targetId: string;
+  selector?: ContentSelector;
+  motivation?: string;
+  attributedTo?: string;
+  language?: string;
+  mediaType?: string;
+}
+export interface PromptRecord {
+  id: string;
+  revision: number;
+  title: string;
+  text: string;
+  language?: string;
+  variables?: readonly string[];
+  modified?: string;
+}
+export interface TaskRecord {
+  id: string;
+  revision: number;
+  title?: string;
+}
+export interface MemoryRecord {
+  id: string;
+  revision: number;
+  title?: string;
+}
+export interface PromptInput {
+  title: string;
+  text: string;
+  language?: string;
+  variables?: readonly string[];
+}
+export interface RevisionPage {
+  revisions: ContentRevisionMetadata[];
+  nextCursor?: string;
+}
+
+export interface SearchFailure {
+  id: string;
+  kind: string;
+  message: string;
+  attempts: number;
+  lastAttempt?: string;
+  excluded?: boolean;
+}
+export interface SearchCircuitStatus {
+  id: string;
+  state: 'closed' | 'open' | 'half-open';
+  reason?: string;
+}
+export interface SearchWorkerProgress {
+  worker: string;
+  completed: number;
+  total?: number;
+  state: string;
+}
+export interface SearchHealth {
+  lexicalReady: boolean;
+  semanticConfigured: boolean;
+  semanticReady: boolean;
+  selectedConfiguration?: string;
+  coverage?: { indexed: number; total?: number };
+  pendingWork?: number;
+  schedules?: readonly { id: string; state: string; nextRun?: string }[];
+  failures?: readonly SearchFailure[];
+  circuits?: readonly SearchCircuitStatus[];
+  workers?: readonly SearchWorkerProgress[];
+  adminAuthorized: boolean;
+}
+export interface BackfillEstimate {
+  estimateId: string;
+  items: number;
+  tokens?: number;
+  cost?: { amount: number; currency: string };
+  durationSeconds?: number;
+  assumptions?: readonly string[];
+}
+export type SearchRunAction = 'play' | 'resume' | 'pause' | 'stop';
+export interface SearchAdminClient {
+  estimateBackfill(options?: RequestOptions): Promise<BackfillEstimate>;
+  approveBackfill(
+    estimateId: string,
+    options?: RequestOptions,
+  ): Promise<SearchHealth>;
+  selectConfiguration(
+    id: string,
+    options?: RequestOptions,
+  ): Promise<SearchHealth>;
+  control(
+    action: SearchRunAction,
+    options?: RequestOptions,
+  ): Promise<SearchHealth>;
+  retryFailure(id: string, options?: RequestOptions): Promise<SearchHealth>;
+  excludeFailure(id: string, options?: RequestOptions): Promise<SearchHealth>;
+  reconnectCircuit(id: string, options?: RequestOptions): Promise<SearchHealth>;
+  retireConfiguration(
+    id: string,
+    options?: RequestOptions,
+  ): Promise<SearchHealth>;
+  deleteEmbeddings(id: string, options?: RequestOptions): Promise<SearchHealth>;
+}
+export type HostOperationKind = 'snapshot' | 'export' | 'import' | 'restore';
+export interface HostOperation {
+  id: string;
+  kind: HostOperationKind;
+  state: 'pending' | 'running' | 'complete' | 'failed';
+  completed?: number;
+  total?: number;
+  message?: string;
+}
+
+export interface ContentCollection<TRecord, TInput> {
+  get(id: string, options?: RequestOptions): Promise<TRecord>;
+  getRevision(
+    id: string,
+    revision: number,
+    options?: RequestOptions,
+  ): Promise<TRecord>;
+  listRevisions(id: string, options?: RequestOptions): Promise<RevisionPage>;
+  create(input: TInput, options?: RequestOptions): Promise<TRecord>;
+  update(
+    id: string,
+    input: TInput,
+    options?: MutationOptions,
+  ): Promise<TRecord>;
 }

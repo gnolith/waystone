@@ -78,6 +78,7 @@ else {
     'docs/codex-sites.md',
     'docs/components.md',
     'docs/plugins.md',
+    'docs/search-content-operations.md',
     'docs/releasing.md',
     'docs/styling.md',
     'docs/taproot-dependencies.md',

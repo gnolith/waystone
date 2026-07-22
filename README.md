@@ -2,7 +2,7 @@
 
 **The accessible human interface and extension surface for Gnolith research Sites.**
 
-`@gnolith/waystone` provides the Gnolith application shell, Taproot knowledge browsing and maintenance UI, revision inspection, SPARQL workspace, browser-safe Site API client, compiled theme, and static plugin contract used by Workshop and future modules.
+`@gnolith/waystone` provides the Gnolith application shell, seven-kind unified search, Resource/Annotation/Prompt workflows, search operations, Taproot knowledge browsing and maintenance UI, revision inspection, SPARQL workspace, browser-safe Site API client, compiled theme, and static plugin contract used by Workshop and future modules.
 
 Waystone is a UI and protocol-consumer package. It does not access D1 or R2, project RDF, implement authentication or authorization, create App Router files, run MCP tools, or import Workshop. The host Site owns those systems and composes Waystone with its generated HTTP routes.
 
@@ -10,7 +10,7 @@ Headless and process-based consumers compose Gnolith's non-UI packages directly 
 
 ## Status
 
-Waystone 0.1 is a pre-1.0 public API. Its isolated consumer fixture installs the exact package archive, builds representative routes, server-renders the public UI surfaces, and exercises the package-owned fixture plugin. Complete Site assembly and hosted acceptance belong to the Codex agent creating that Site. See [the dependency record](docs/taproot-dependencies.md) and [release evidence](docs/release-evidence.md).
+Waystone 0.2 is a pre-1.0 public API. Its isolated consumer fixture installs the exact package archive, builds representative routes, server-renders the public UI surfaces, and exercises the package-owned fixture plugin. Complete Site assembly and hosted acceptance belong to the Site host. See [the dependency record](docs/taproot-dependencies.md) and [release evidence](docs/release-evidence.md).
 
 ## Install
 
@@ -74,6 +74,7 @@ Generated routes should create the client and registry once at module scope. Aut
 - [API client](docs/api-client.md)
 - [Plugin authoring](docs/plugins.md)
 - [Components and knowledge workflows](docs/components.md)
+- [Search, content, and operations](docs/search-content-operations.md)
 - [Styling and public design tokens](docs/styling.md)
 - [Accessibility](docs/accessibility.md)
 - [Codex Sites and vinext integration](docs/codex-sites.md)
@@ -98,7 +99,7 @@ npm pack --dry-run
 - Node for development: `>=22`
 - Runtime exports: ESM and Web APIs, with package verification rejecting Node and Cloudflare imports reachable from public entry points
 - TypeScript consumers: strict projects on currently supported TypeScript 5.9+
-- Taproot: optional `>=0.3.0 <0.4.0`; generated Sites using Taproot must provide it. Development conformance is pinned to the exact packed statement-text contract commit recorded in [Taproot integration](docs/taproot-dependencies.md).
+- Taproot: optional `>=0.3.0 <0.5.0`; Waystone imports no Taproot runtime and retains the 0.3 entity/statement structural contract while accepting 0.4 hosts that provide the new HTTP surfaces. Exact assembled compatibility must still be qualified by the Site host.
 
 ## Security
 

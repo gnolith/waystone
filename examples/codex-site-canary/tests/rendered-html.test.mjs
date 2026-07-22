@@ -19,6 +19,10 @@ for (const [path, expected] of [
   ['/entities/Q1', 'Field specimen'],
   ['/properties/P1', 'related object'],
   ['/sparql', 'SPARQL'],
+  ['/search', 'Search'],
+  ['/resources/R1', 'Canary Resource'],
+  ['/annotations/A1', 'Canary annotation'],
+  ['/prompts/PROMPT1', 'Canary Prompt'],
 ]) {
   test(`server-renders ${path}`, async () => {
     const response = await render(path);
