@@ -13,6 +13,9 @@ import path from 'node:path';
 
 const npmCli = process.env.npm_execpath;
 if (!npmCli) throw new Error('Run the declaration check through npm.');
+const candidateVersion = JSON.parse(
+  readFileSync('package.json', 'utf8'),
+).version;
 
 function run(args, cwd = process.cwd()) {
   const result = spawnSync(process.execPath, [npmCli, ...args], {
@@ -94,11 +97,11 @@ try {
   );
   writeFileSync(
     path.join(consumer, 'src', 'consumer.ts'),
-    `import { fromTaprootEntity, type TaprootWikibaseEntity, type WikibaseEntity } from '@gnolith/waystone';\nimport { createWaystoneClient, type CreateWaystoneClientOptions } from '@gnolith/waystone/client';\n\ndeclare const canonical: TaprootWikibaseEntity;\nconst display: WikibaseEntity = fromTaprootEntity(canonical);\nconst options: CreateWaystoneClientOptions = { baseUrl: '/api' };\nconst client = createWaystoneClient(options);\nvoid display;\nvoid client;\n`,
+    `import { fromTaprootEntity, type TaprootWikibaseEntity, type WikibaseEntity, type UnifiedSearchResult, type ResourceRecord, type AnnotationRecord, type PromptRecord } from '@gnolith/waystone';\nimport { createWaystoneClient, hydrateSearchResult, type CreateWaystoneClientOptions } from '@gnolith/waystone/client';\n\ndeclare const canonical: TaprootWikibaseEntity;\ndeclare const result: UnifiedSearchResult;\ndeclare const resource: ResourceRecord;\ndeclare const annotation: AnnotationRecord;\ndeclare const prompt: PromptRecord;\nconst display: WikibaseEntity = fromTaprootEntity(canonical);\nconst options: CreateWaystoneClientOptions = { baseUrl: '/api' };\nconst client = createWaystoneClient(options);\nvoid hydrateSearchResult(client, result);\nvoid display;\nvoid resource;\nvoid annotation;\nvoid prompt;\n`,
   );
   writeFileSync(
     path.join(consumer, 'src', 'consumer.tsx'),
-    `import { EntityPage, WaystoneMain, type WikibaseEntity } from '@gnolith/waystone';\n\ndeclare const entity: WikibaseEntity;\nexport const view = (\n  <WaystoneMain>\n    <EntityPage entity={entity} />\n  </WaystoneMain>\n);\n`,
+    `import { EntityPage, ResourceView, AnnotationView, PromptView, WaystoneMain, type WikibaseEntity, type ResourceRecord, type AnnotationRecord, type PromptRecord } from '@gnolith/waystone';\nimport { UnifiedSearchScreen } from '@gnolith/waystone/client';\nimport type { WaystoneClient } from '@gnolith/waystone';\n\ndeclare const entity: WikibaseEntity;\ndeclare const resource: ResourceRecord;\ndeclare const annotation: AnnotationRecord;\ndeclare const prompt: PromptRecord;\ndeclare const client: WaystoneClient;\nexport const view = (\n  <WaystoneMain>\n    <EntityPage entity={entity} />\n    <UnifiedSearchScreen client={client} />\n    <ResourceView resource={resource} />\n    <AnnotationView annotation={annotation} />\n    <PromptView prompt={prompt} />\n  </WaystoneMain>\n);\n`,
   );
 
   run(
@@ -117,7 +120,7 @@ try {
 
   const tree = JSON.parse(run(['ls', '--all', '--json'], consumer));
   const exactVersions = {
-    '@gnolith/waystone': '0.1.2',
+    '@gnolith/waystone': candidateVersion,
     '@types/react': '19.2.14',
     react: '19.2.6',
     'react-dom': '19.2.6',

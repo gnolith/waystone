@@ -20,6 +20,21 @@ const budgets = {
       "export { EntityEditor, StatementEditor, SitelinkEditor, EntityLifecycleControls } from './dist/client.js';",
     limit: 35_000,
   },
+  'unified search': {
+    source:
+      "export { UnifiedSearchScreen, hydrateSearchResult } from './dist/client.js';",
+    limit: 35_000,
+  },
+  'content editors': {
+    source:
+      "export { ResourceEditor, AnnotationEditor, PromptEditor } from './dist/client.js';",
+    limit: 35_000,
+  },
+  'search and host operations': {
+    source:
+      "export { SearchAdministration, HostOperationsPanel } from './dist/client.js';",
+    limit: 35_000,
+  },
 };
 
 let failed = false;

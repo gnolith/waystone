@@ -473,5 +473,103 @@ export function createMockWaystoneClient(
           : fixtureSparqlBindings;
       },
     },
+    search: {
+      async query() {
+        return { results: [], readiness: 'lexical-only' };
+      },
+      async health() {
+        return {
+          lexicalReady: true,
+          semanticConfigured: false,
+          semanticReady: false,
+          adminAuthorized: false,
+        };
+      },
+      admin: {
+        async estimateBackfill() {
+          return { estimateId: 'fixture', items: 0 };
+        },
+        async approveBackfill() {
+          return thisHealth();
+        },
+        async selectConfiguration() {
+          return thisHealth();
+        },
+        async control() {
+          return thisHealth();
+        },
+        async retryFailure() {
+          return thisHealth();
+        },
+        async excludeFailure() {
+          return thisHealth();
+        },
+        async reconnectCircuit() {
+          return thisHealth();
+        },
+        async retireConfiguration() {
+          return thisHealth();
+        },
+        async deleteEmbeddings() {
+          return thisHealth();
+        },
+      },
+    },
+    resources: unsupportedCollection(),
+    annotations: unsupportedCollection(),
+    prompts: unsupportedCollection(),
+    tasks: {
+      async get() {
+        throw unsupported();
+      },
+    },
+    memories: {
+      async get() {
+        throw unsupported();
+      },
+    },
+    hostOperations: {
+      async list() {
+        return [];
+      },
+      async start() {
+        throw unsupported();
+      },
+    },
+  };
+}
+
+function unsupported(): WaystoneRequestError {
+  return new WaystoneRequestError('This fixture operation is not configured.', {
+    kind: 'unsupported',
+  });
+}
+
+function thisHealth() {
+  return {
+    lexicalReady: true,
+    semanticConfigured: false,
+    semanticReady: false,
+    adminAuthorized: true,
+  };
+}
+
+function unsupportedCollection() {
+  return {
+    async get(): Promise<never> {
+      throw unsupported();
+    },
+    async getRevision(): Promise<never> {
+      throw unsupported();
+    },
+    async listRevisions() {
+      return { revisions: [] };
+    },
+    async create(): Promise<never> {
+      throw unsupported();
+    },
+    async update(): Promise<never> {
+      throw unsupported();
+    },
   };
 }

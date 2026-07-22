@@ -65,6 +65,11 @@ export function CanaryShell({
           deleteEntity: true,
           revertRevision: true,
           querySparql: true,
+          searchAdmin: true,
+          editResources: true,
+          editAnnotations: true,
+          editPrompts: true,
+          hostOperations: true,
         },
       }}
     >

@@ -1,6 +1,6 @@
 {
   "name": "@gnolith/waystone",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "The accessible human interface and extension surface for Gnolith research Sites.",
   "type": "module",
   "sideEffects": [
@@ -45,6 +45,7 @@
     "docs/codex-sites.md",
     "docs/components.md",
     "docs/plugins.md",
+    "docs/search-content-operations.md",
     "docs/releasing.md",
     "docs/styling.md",
     "docs/taproot-dependencies.md",
@@ -58,7 +59,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs",
     "check": "npm run check:package && npm run consumer:check",
-    "check:package": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run verify:package && npm run boundary:check && npm run budgets",
+    "check:package": "npm run format:check && npm run lint && npm run typecheck && npm run security:check && npm run test:coverage && npm run build && npm run verify:package && npm run boundary:check && npm run budgets",
     "boundary:check": "node scripts/check-consumer-boundary.mjs",
     "consumer:check": "node scripts/check-consumer.mjs && node scripts/check-declaration-consumer.mjs && node scripts/check-taproot-contract.mjs",
     "format": "prettier --write .",
@@ -70,10 +71,11 @@
     "typecheck": "tsc --noEmit",
     "verify:package": "node scripts/verify-package.mjs",
     "budgets": "node scripts/check-budgets.mjs",
+    "security:check": "npm audit --audit-level=high && npm audit --omit=dev --audit-level=high && npm audit --package-lock-only --prefix examples/codex-site-canary --audit-level=high && npm audit --package-lock-only --prefix examples/codex-site-canary --omit=dev --audit-level=high",
     "prepack": "npm run check:package"
   },
   "peerDependencies": {
-    "@gnolith/taproot": ">=0.3.0 <0.4.0",
+    "@gnolith/taproot": ">=0.3.0 <0.5.0",
     "@types/react": ">=19 <20",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"

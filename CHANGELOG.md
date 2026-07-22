@@ -4,6 +4,19 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-22
+
+### Added
+
+- Added the first-class, cursor-paginated seven-kind unified search client and accessible screen with explicit kind-aware filters, lexical/semantic readiness, degraded and cursor-recovery states, typed traceability, independent chunk rendering, and owning-route hydration.
+- Added browser-safe Resource, Annotation, Prompt, Task, and Memory structural client contracts; Resource, Annotation, and Prompt display/edit/history components; selectors, linked identity, inherited visibility, and safe external-location handling.
+- Added search health and exact-admin interfaces for estimates, explicit budget approval, configuration and schedule controls, bounded failures, circuits, retirement, and retained-embedding deletion, plus host-only snapshot/export/import/restore progress.
+- Added deterministic transport, UI, redaction, authorization, accessibility, packed-consumer, and bundle-budget verification for the new surfaces.
+
+### Changed
+
+- Widened the optional structural Taproot peer range through 0.4. Waystone still imports no Taproot runtime; assembled Site compatibility remains a host acceptance responsibility.
+
 ### Changed
 
 - Added mandatory authored text to Waystone and structural Taproot statement revisions. Adapters, HTTP serialization, fixtures, rendering, and mock persistence preserve the text exactly, while mutation editors require a new nonblank confirmation for add, replace, rank, qualifier, and reference changes instead of silently carrying earlier prose.
@@ -49,7 +62,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 - First production-candidate public contract.
 
-[Unreleased]: https://github.com/gnolith/waystone/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/gnolith/waystone/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gnolith/waystone/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/gnolith/waystone/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/gnolith/waystone/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/gnolith/waystone/releases/tag/v0.1.0
