@@ -99,7 +99,8 @@ npm pack --dry-run
 - Node for development: `>=22`
 - Runtime exports: ESM and Web APIs, with package verification rejecting Node and Cloudflare imports reachable from public entry points
 - TypeScript consumers: strict projects on currently supported TypeScript 5.9+
-- Taproot: optional `>=0.3.0 <0.5.0`; Waystone imports no Taproot runtime and retains the 0.3 entity/statement structural contract while accepting 0.4 hosts that provide the new HTTP surfaces. Exact assembled compatibility must still be qualified by the Site host.
+- Taproot: optional `>=0.4.0 <0.5.0`; browser-safe models and lossless adapters match the exact 0.4.0 search, Resource, Annotation, statement, and command contracts.
+- Workshop: optional `>=0.4.1 <0.5.0`; exact 0.4.1 search uses `POST /api/workshop/search`, Prompt CRUD/history uses `/api/workshop/prompts`, and administration uses `GET`/`POST /api/workshop/search/admin`.
 
 ## Security
 

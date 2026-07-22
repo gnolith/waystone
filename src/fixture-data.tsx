@@ -475,49 +475,47 @@ export function createMockWaystoneClient(
     },
     search: {
       async query() {
-        return { results: [], readiness: 'lexical-only' };
+        return { results: [] };
       },
-      async health() {
-        return {
-          lexicalReady: true,
-          semanticConfigured: false,
-          semanticReady: false,
-          adminAuthorized: false,
-        };
+      async hydrate(): Promise<never> {
+        throw unsupported();
       },
       admin: {
-        async estimateBackfill() {
-          return { estimateId: 'fixture', items: 0 };
-        },
-        async approveBackfill() {
+        async inspect() {
           return thisHealth();
         },
-        async selectConfiguration() {
-          return thisHealth();
-        },
-        async control() {
-          return thisHealth();
-        },
-        async retryFailure() {
-          return thisHealth();
-        },
-        async excludeFailure() {
-          return thisHealth();
-        },
-        async reconnectCircuit() {
-          return thisHealth();
-        },
-        async retireConfiguration() {
-          return thisHealth();
-        },
-        async deleteEmbeddings() {
+        async execute() {
           return thisHealth();
         },
       },
     },
-    resources: unsupportedCollection(),
-    annotations: unsupportedCollection(),
-    prompts: unsupportedCollection(),
+    resources: {
+      ...unsupportedCollection(),
+      async hydrate(): Promise<never> {
+        throw unsupported();
+      },
+      async delete(): Promise<never> {
+        throw unsupported();
+      },
+    },
+    annotations: {
+      ...unsupportedCollection(),
+      async delete(): Promise<never> {
+        throw unsupported();
+      },
+    },
+    prompts: {
+      ...unsupportedCollection(),
+      async list(): Promise<never> {
+        throw unsupported();
+      },
+      async delete(): Promise<never> {
+        throw unsupported();
+      },
+      async history(): Promise<never> {
+        throw unsupported();
+      },
+    },
     tasks: {
       async get() {
         throw unsupported();

@@ -9,18 +9,18 @@ import {
 } from './knowledge-components.js';
 import {
   SEARCH_KINDS,
-  type AnnotationInput,
-  type AnnotationRecord,
-  type BackfillEstimate,
+  type TaprootCreateAnnotationInput,
+  type TaprootAnnotation,
   type HostOperation,
   type HostOperationKind,
-  type PromptInput,
-  type PromptRecord,
-  type ResourceInput,
-  type ResourceRecord,
+  type WorkshopCreatePromptInput,
+  type WorkshopPrompt,
+  type TaprootCreateResourceInput,
+  type TaprootResource,
   type SearchHealth,
   type SearchKind,
-  type SearchRunAction,
+  type SearchPage,
+  type SearchRequest,
   type UnifiedSearchInput,
   type UnifiedSearchPage,
   type UnifiedSearchResult,
@@ -31,22 +31,65 @@ export async function hydrateSearchResult(
   client: WaystoneClient,
   result: UnifiedSearchResult,
 ): Promise<unknown> {
-  switch (result.kind) {
-    case 'statement':
-      return client.entities.get(result.itemId);
-    case 'item':
-      return client.entities.get(result.itemId);
-    case 'task':
-      return client.tasks.get(result.taskId);
-    case 'memory':
-      return client.memories.get(result.memoryId);
-    case 'prompt':
-      return client.prompts.get(result.promptId);
-    case 'resource':
-      return client.resources.get(result.resourceId);
-    case 'annotation':
-      return client.annotations.get(result.annotationId);
-  }
+  return client.search.hydrate({
+    kind: result.kind,
+    sourceId: result.canonicalId,
+    sourceRevision: String(result.revision),
+    score: result.score,
+    snippet: result.snippet ?? '',
+  });
+}
+
+function canonicalRequest(input: UnifiedSearchInput): SearchRequest {
+  const language = input.filters?.language;
+  const mediaType = input.filters?.mediaType;
+  return {
+    text: input.query,
+    ...(input.kinds ? { kinds: input.kinds } : {}),
+    filters: {
+      languages: typeof language === 'string' && language ? [language] : [],
+      sourceRevisions: [],
+      byKind: {
+        ...(typeof mediaType === 'string' && mediaType
+          ? { resource: { mediaTypes: [mediaType] } }
+          : {}),
+      },
+    },
+    ...(input.pageSize !== undefined ? { limit: input.pageSize } : {}),
+    ...(input.cursor ? { cursor: input.cursor } : {}),
+  };
+}
+
+function displayPage(page: SearchPage): UnifiedSearchPage {
+  return {
+    results: page.results.map((result) => ({
+      kind: result.kind,
+      canonicalId: result.sourceId,
+      revision: result.sourceRevision,
+      score: result.score,
+      snippet: result.snippet,
+      ...(result.title ? { title: result.title } : {}),
+      ...(result.language ? { language: result.language } : {}),
+      ...(result.match?.contributingStatementIds
+        ? { contributingStatementIds: result.match.contributingStatementIds }
+        : {}),
+      ...(result.kind === 'item' || result.kind === 'statement'
+        ? { itemId: result.sourceId }
+        : {}),
+      ...(result.kind === 'statement' ? { statementId: result.sourceId } : {}),
+      ...(result.kind === 'task' ? { taskId: result.sourceId } : {}),
+      ...(result.kind === 'memory' ? { memoryId: result.sourceId } : {}),
+      ...(result.kind === 'prompt' ? { promptId: result.sourceId } : {}),
+      ...(result.kind === 'resource' ? { resourceId: result.sourceId } : {}),
+      ...(result.kind === 'annotation'
+        ? { annotationId: result.sourceId }
+        : {}),
+    })),
+    ...(page.cursor ? { nextCursor: page.cursor } : {}),
+    readiness: 'lexical-only',
+    notice:
+      'Search readiness is available through the Workshop administration status response.',
+  };
 }
 
 export function UnifiedSearchScreen({
@@ -85,7 +128,7 @@ export function UnifiedSearchScreen({
     setError(undefined);
     setLastInput(input);
     try {
-      setPage(await client.search.query(input));
+      setPage(displayPage(await client.search.query(canonicalRequest(input))));
       setCursor(input.cursor ?? '');
     } catch (cause) {
       setPage(undefined);
@@ -290,24 +333,24 @@ export function ResourceEditor({
   onSaved,
 }: {
   client: WaystoneClient;
-  resource?: ResourceRecord;
-  onSaved?: (value: ResourceRecord) => void;
+  resource?: TaprootResource;
+  onSaved?: (value: TaprootResource) => void;
 }) {
   const [title, setTitle] = useState(resource?.title ?? '');
-  const [body, setBody] = useState(resource?.body ?? '');
-  const [location, setLocation] = useState(resource?.location ?? '');
-  const [integrity, setIntegrity] = useState(resource?.integrity ?? '');
+  const [resourceId, setResourceId] = useState(resource?.id ?? '');
+  const [itemId, setItemId] = useState<string>(resource?.itemId ?? 'Q1');
+  const [body, setBody] = useState(
+    resource?.payload.kind === 'inline-text' ? resource.payload.text : '',
+  );
+  const [location, setLocation] = useState(
+    resource?.payload.kind === 'location' ? resource.payload.location : '',
+  );
+  const [integrity, setIntegrity] = useState(resource?.integrity.digest ?? '');
   const [language, setLanguage] = useState(resource?.language ?? '');
   const [mediaType, setMediaType] = useState(resource?.mediaType ?? '');
-  const [selectedExcerpt, setSelectedExcerpt] = useState(
-    resource?.selectedExcerpt ?? '',
-  );
-  const [metadata, setMetadata] = useState(
-    resource?.metadata ? JSON.stringify(resource.metadata, null, 2) : '',
-  );
-  const [linkedItems, setLinkedItems] = useState(
-    resource?.linkedItemIds?.join(', ') ?? '',
-  );
+  const [selectedExcerpt, setSelectedExcerpt] = useState('');
+  const [metadata, setMetadata] = useState('');
+  const [linkedItems, setLinkedItems] = useState('');
   const [error, setError] = useState<unknown>();
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -329,26 +372,41 @@ export function ResourceEditor({
       setError(cause);
       return;
     }
-    const input: ResourceInput = {
-      title,
-      body,
-      location,
-      integrity,
-      language,
+    void parsedMetadata;
+    const payload = location
+      ? { kind: 'location' as const, location, storage: 'url' as const }
+      : { kind: 'inline-text' as const, text: body };
+    const input: TaprootCreateResourceInput = {
+      id: resourceId,
+      itemId: itemId as `Q${number}`,
+      ...(title ? { title } : {}),
+      payload,
       mediaType,
-      selectedExcerpt,
-      ...(parsedMetadata ? { metadata: parsedMetadata } : {}),
-      linkedItemIds: linkedItems
-        .split(',')
-        .map((v) => v.trim())
-        .filter(Boolean),
+      ...(language ? { language } : {}),
+      integrity: {
+        algorithm: 'sha256',
+        digest: integrity,
+        byteLength:
+          resource?.integrity.byteLength ??
+          new TextEncoder().encode(body).byteLength,
+      },
     };
     try {
       onSaved?.(
         resource
-          ? await client.resources.update(resource.id, input, {
-              expectedRevision: resource.revision,
-            })
+          ? await client.resources.update(
+              resource.id,
+              {
+                ...(title ? { title } : {}),
+                payload,
+                mediaType,
+                ...(language ? { language } : {}),
+                integrity: input.integrity,
+              },
+              {
+                expectedRevision: resource.revision,
+              },
+            )
           : await client.resources.create(input),
       );
     } catch (cause) {
@@ -358,6 +416,23 @@ export function ResourceEditor({
   return (
     <form className="ws-editor" onSubmit={(event) => void save(event)}>
       <h2>{resource ? 'Edit Resource' : 'Create Resource'}</h2>
+      <label>
+        Resource ID{' '}
+        <input
+          required
+          value={resourceId}
+          onChange={(event) => setResourceId(event.target.value)}
+        />
+      </label>
+      <label>
+        Linked Item ID{' '}
+        <input
+          required
+          pattern="Q[0-9]+"
+          value={itemId}
+          onChange={(event) => setItemId(event.target.value)}
+        />
+      </label>
       <label>
         Title{' '}
         <input
@@ -435,22 +510,26 @@ export function AnnotationEditor({
   onSaved,
 }: {
   client: WaystoneClient;
-  annotation?: AnnotationRecord;
-  onSaved?: (value: AnnotationRecord) => void;
+  annotation?: TaprootAnnotation;
+  onSaved?: (value: TaprootAnnotation) => void;
 }) {
-  const [body, setBody] = useState(annotation?.body ?? '');
-  const [bodyResourceId, setBodyResourceId] = useState(
-    annotation?.bodyResource?.resourceId ?? '',
+  const [annotationId, setAnnotationId] = useState(annotation?.id ?? '');
+  const [body, setBody] = useState(
+    annotation?.body.kind === 'text' ? annotation.body.text : '',
   );
-  const [targetId, setTargetId] = useState(annotation?.targetId ?? '');
+  const [bodyResourceId, setBodyResourceId] = useState(
+    annotation?.body.kind === 'resource' ? annotation.body.resourceId : '',
+  );
+  const [targetId, setTargetId] = useState(annotation?.target.sourceId ?? '');
   const [selector, setSelector] = useState(
-    annotation?.selector && 'value' in annotation.selector
-      ? (annotation.selector.value ?? '')
+    annotation?.target.selector &&
+      typeof annotation.target.selector.value === 'string'
+      ? annotation.target.selector.value
       : '',
   );
   const [motivation, setMotivation] = useState(annotation?.motivation ?? '');
   const [attributedTo, setAttributedTo] = useState(
-    annotation?.attributedTo ?? '',
+    annotation?.attribution.name ?? annotation?.attribution.id ?? '',
   );
   const [language, setLanguage] = useState(annotation?.language ?? '');
   const [mediaType, setMediaType] = useState(annotation?.mediaType ?? '');
@@ -458,17 +537,32 @@ export function AnnotationEditor({
   async function save(event: FormEvent) {
     event.preventDefault();
     setError(undefined);
-    const input: AnnotationInput = {
-      targetId,
-      body,
-      ...(bodyResourceId
-        ? { bodyResource: { resourceId: bodyResourceId } }
-        : {}),
-      ...(selector ? { selector: { type: 'fragment', value: selector } } : {}),
-      motivation,
-      attributedTo,
-      language,
-      mediaType,
+    const input: TaprootCreateAnnotationInput = {
+      id: annotationId,
+      body: bodyResourceId
+        ? { kind: 'resource', resourceId: bodyResourceId }
+        : {
+            kind: 'text',
+            text: body,
+            ...(mediaType ? { mediaType } : {}),
+            ...(language ? { language } : {}),
+          },
+      target: {
+        kind: annotation?.target.kind ?? 'resource',
+        sourceId: targetId,
+        ...(selector
+          ? { selector: { type: 'fragment', value: selector } }
+          : {}),
+      },
+      targetVisibility: annotation?.authorization.visibility ?? {
+        version: 1,
+        clauses: [],
+      },
+      ...(motivation ? { motivation } : {}),
+      ...(annotation?.creator ? { creator: annotation.creator } : {}),
+      ...(annotation?.generator ? { generator: annotation.generator } : {}),
+      ...(language ? { language } : {}),
+      ...(mediaType ? { mediaType } : {}),
     };
     try {
       onSaved?.(
@@ -485,6 +579,14 @@ export function AnnotationEditor({
   return (
     <form className="ws-editor" onSubmit={(event) => void save(event)}>
       <h2>{annotation ? 'Edit Annotation' : 'Create Annotation'}</h2>
+      <label>
+        Annotation ID{' '}
+        <input
+          required
+          value={annotationId}
+          onChange={(event) => setAnnotationId(event.target.value)}
+        />
+      </label>
       <label>
         Small embedded body{' '}
         <textarea
@@ -554,32 +656,52 @@ export function PromptEditor({
   onSaved,
 }: {
   client: WaystoneClient;
-  prompt?: PromptRecord;
-  onSaved?: (value: PromptRecord) => void;
+  prompt?: WorkshopPrompt;
+  onSaved?: (value: WorkshopPrompt) => void;
 }) {
   const [title, setTitle] = useState(prompt?.title ?? '');
-  const [text, setText] = useState(prompt?.text ?? '');
+  const [name, setName] = useState(prompt?.name ?? '');
+  const [text, setText] = useState(prompt?.promptText ?? '');
   const [language, setLanguage] = useState(prompt?.language ?? '');
   const [variables, setVariables] = useState(
-    prompt?.variables?.join(', ') ?? '',
+    prompt?.variables ? JSON.stringify(prompt.variables) : '{}',
   );
   const [error, setError] = useState<unknown>();
   async function save(event: FormEvent) {
     event.preventDefault();
     setError(undefined);
-    const input: PromptInput = {
-      title,
-      text,
-      language,
-      variables: variables
-        .split(',')
-        .map((v) => v.trim())
-        .filter(Boolean),
+    let variableSchema: Readonly<Record<string, unknown>>;
+    try {
+      variableSchema = JSON.parse(variables) as Readonly<
+        Record<string, unknown>
+      >;
+    } catch (cause) {
+      setError(cause);
+      return;
+    }
+    const input: WorkshopCreatePromptInput = {
+      name,
+      ...(title ? { title } : {}),
+      promptText: text,
+      variables: variableSchema,
+      ...(language ? { language } : {}),
+      ...(prompt?.scope ? { scope: prompt.scope } : {}),
+      ...(prompt?.role ? { role: prompt.role } : {}),
+      ...(prompt
+        ? {
+            active: prompt.active,
+            priority: prompt.priority,
+            order: prompt.order,
+            attribution: prompt.attribution,
+            visibility: prompt.visibility,
+          }
+        : {}),
     };
     try {
       onSaved?.(
         prompt
-          ? await client.prompts.update(prompt.id, input, {
+          ? await client.prompts.update(prompt.id, {
+              ...input,
               expectedRevision: prompt.revision,
             })
           : await client.prompts.create(input),
@@ -591,6 +713,14 @@ export function PromptEditor({
   return (
     <form className="ws-editor" onSubmit={(event) => void save(event)}>
       <h2>{prompt ? 'Edit Prompt' : 'Create Prompt'}</h2>
+      <label>
+        Name{' '}
+        <input
+          required
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
       <label>
         Title{' '}
         <input
@@ -615,7 +745,7 @@ export function PromptEditor({
         />
       </label>
       <label>
-        Variables, comma separated{' '}
+        Variable schema (JSON object){' '}
         <input
           value={variables}
           onChange={(event) => setVariables(event.target.value)}
@@ -634,199 +764,16 @@ export function SearchAdministration({
   client: WaystoneClient;
   health: SearchHealth;
 }) {
-  const [health, setHealth] = useState(initialHealth);
-  const [estimate, setEstimate] = useState<BackfillEstimate>();
-  const [configuration, setConfiguration] = useState(
-    initialHealth.selectedConfiguration ?? '',
-  );
-  const [error, setError] = useState<unknown>();
-  const [busy, setBusy] = useState(false);
-  if (!health.adminAuthorized) return <SearchHealthView health={health} />;
-  async function act(operation: () => Promise<SearchHealth>) {
-    setBusy(true);
-    setError(undefined);
-    try {
-      setHealth(await operation());
-    } catch (cause) {
-      setError(cause);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function estimateBackfill() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      setEstimate(await client.search.admin.estimateBackfill());
-    } catch (cause) {
-      setError(cause);
-    } finally {
-      setBusy(false);
-    }
-  }
-  function confirmed(message: string, operation: () => Promise<SearchHealth>) {
-    if (window.confirm(message)) void act(operation);
-  }
-  const controls: SearchRunAction[] = ['play', 'resume', 'pause', 'stop'];
+  void client;
   return (
-    <section className="ws-admin">
-      <SearchHealthView health={health} />
-      <h2>Search administration</h2>
-      <ErrorAlert error={error} />
-      <div className="ws-actions">
-        <button
-          disabled={busy}
-          type="button"
-          onClick={() => void estimateBackfill()}
-        >
-          Estimate backfill
-        </button>
-        {controls.map((action) => (
-          <button
-            disabled={busy}
-            type="button"
-            key={action}
-            onClick={() => void act(() => client.search.admin.control(action))}
-          >
-            {action}
-          </button>
-        ))}
-      </div>
-      <label>
-        Configuration ID{' '}
-        <input
-          value={configuration}
-          onChange={(event) => setConfiguration(event.target.value)}
-        />
-      </label>
-      <div className="ws-actions">
-        <button
-          disabled={busy || !configuration}
-          type="button"
-          onClick={() =>
-            void act(() =>
-              client.search.admin.selectConfiguration(configuration),
-            )
-          }
-        >
-          Select configuration
-        </button>
-        <button
-          disabled={busy || !configuration}
-          type="button"
-          onClick={() =>
-            confirmed(
-              `Retire configuration ${configuration}? New work will no longer use it.`,
-              () => client.search.admin.retireConfiguration(configuration),
-            )
-          }
-        >
-          Retire configuration
-        </button>
-        <button
-          className="ws-button--danger"
-          disabled={busy || !configuration}
-          type="button"
-          onClick={() =>
-            confirmed(
-              `Permanently delete retained embeddings for ${configuration}?`,
-              () => client.search.admin.deleteEmbeddings(configuration),
-            )
-          }
-        >
-          Delete retained embeddings
-        </button>
-      </div>
-      {estimate && (
-        <section className="ws-estimate">
-          <h3>Backfill estimate</h3>
-          <dl className="ws-metadata">
-            <div>
-              <dt>Items</dt>
-              <dd>{estimate.items}</dd>
-            </div>
-            <div>
-              <dt>Tokens</dt>
-              <dd>{estimate.tokens ?? 'Unknown'}</dd>
-            </div>
-            <div>
-              <dt>Cost</dt>
-              <dd>
-                {estimate.cost
-                  ? `${estimate.cost.amount} ${estimate.cost.currency}`
-                  : 'Unknown — approval may still incur charges'}
-              </dd>
-            </div>
-            <div>
-              <dt>Duration</dt>
-              <dd>
-                {estimate.durationSeconds === undefined
-                  ? 'Unknown'
-                  : `${estimate.durationSeconds} seconds`}
-              </dd>
-            </div>
-          </dl>
-          {estimate.assumptions?.length ? (
-            <ul>
-              {estimate.assumptions.map((assumption) => (
-                <li key={assumption}>{assumption}</li>
-              ))}
-            </ul>
-          ) : null}
-          <button
-            type="button"
-            onClick={() =>
-              confirmed(
-                'Approve this backfill budget using the displayed assumptions?',
-                () => client.search.admin.approveBackfill(estimate.estimateId),
-              )
-            }
-          >
-            Approve backfill budget
-          </button>
-        </section>
-      )}
-      {health.failures?.map((failure) => (
-        <div className="ws-actions" key={failure.id}>
-          <span>
-            {failure.kind} ({failure.id})
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              void act(() => client.search.admin.retryFailure(failure.id))
-            }
-          >
-            Retry
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              confirmed(
-                `Exclude failure ${failure.id}? It will remain visible in status.`,
-                () => client.search.admin.excludeFailure(failure.id),
-              )
-            }
-          >
-            Exclude
-          </button>
-        </div>
-      ))}
-      {health.circuits?.map((circuit) => (
-        <div className="ws-actions" key={circuit.id}>
-          <span>
-            {circuit.id}: {circuit.state}
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              void act(() => client.search.admin.reconnectCircuit(circuit.id))
-            }
-          >
-            Reconnect
-          </button>
-        </div>
-      ))}
+    <section>
+      <SearchHealthView health={initialHealth} />
+      <p>
+        Search administration uses exact typed operations through{' '}
+        <code>client.search.admin.execute</code>. Configuration identifiers,
+        plan identifiers, generations, policies, and limits must be supplied by
+        the authorized host; the UI does not invent them.
+      </p>
     </section>
   );
 }

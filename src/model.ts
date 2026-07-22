@@ -222,16 +222,16 @@ export interface WaystoneClient {
     query(query: string, options?: RequestOptions): Promise<SparqlQueryResult>;
   };
   search: {
-    query(
-      input: UnifiedSearchInput,
+    query(input: SearchRequest, options?: RequestOptions): Promise<SearchPage>;
+    hydrate(
+      result: SearchResult,
       options?: RequestOptions,
-    ): Promise<UnifiedSearchPage>;
-    health(options?: RequestOptions): Promise<SearchHealth>;
-    admin: SearchAdminClient;
+    ): Promise<SearchHydratedValue>;
+    admin: SearchAdministrationClient;
   };
-  resources: ContentCollection<ResourceRecord, ResourceInput>;
-  annotations: ContentCollection<AnnotationRecord, AnnotationInput>;
-  prompts: ContentCollection<PromptRecord, PromptInput>;
+  resources: TaprootResourceCollection;
+  annotations: TaprootAnnotationCollection;
+  prompts: WorkshopPromptCollection;
   tasks: { get(id: string, options?: RequestOptions): Promise<TaskRecord> };
   memories: {
     get(id: string, options?: RequestOptions): Promise<MemoryRecord>;
@@ -303,83 +303,86 @@ export const SEARCH_KINDS = [
 ] as const;
 export type SearchKind = (typeof SEARCH_KINDS)[number];
 
-export interface UnifiedSearchFilters {
-  language?: string;
-  itemId?: string;
-  resourceId?: string;
-  mediaType?: string;
-  motivation?: string;
-  selectorType?: string;
+export interface SearchFilters {
+  languages?: readonly string[];
+  sourceRevisions?: readonly string[];
+  byKind?: Readonly<{
+    statement?: { predicateIds: readonly string[] };
+    item?: { typeIds: readonly string[] };
+    task?: { statuses: readonly string[] };
+    resource?: { mediaTypes: readonly string[] };
+  }>;
+  /** Additional host filters are preserved verbatim. */
+  [key: string]: unknown;
 }
+export interface SearchRequest {
+  text: string;
+  kinds?: readonly SearchKind[];
+  filters?: Record<string, unknown>;
+  limit?: number;
+  cursor?: string;
+}
+export type SearchReference =
+  | { kind: 'statement'; sourceId: string }
+  | { kind: 'item'; sourceId: string }
+  | { kind: 'task'; sourceId: string }
+  | { kind: 'memory'; sourceId: string }
+  | { kind: 'prompt'; sourceId: string }
+  | { kind: 'resource'; sourceId: string }
+  | { kind: 'annotation'; sourceId: string };
+export interface SearchMatch {
+  derivedDocumentId?: string;
+  selector?: unknown;
+  contributingStatementIds?: string[];
+}
+export interface SearchResult {
+  kind: SearchKind;
+  sourceId: string;
+  sourceRevision: string;
+  score: number;
+  title?: string;
+  snippet: string;
+  language?: string;
+  match?: SearchMatch;
+}
+export interface SearchPage {
+  results: SearchResult[];
+  cursor?: string;
+}
+/** Presentation input. Use encodeUnifiedSearchInput for the canonical boundary. */
 export interface UnifiedSearchInput {
   query: string;
   kinds?: readonly SearchKind[];
-  filters?: UnifiedSearchFilters;
+  filters?: { language?: string; mediaType?: string; [key: string]: unknown };
   cursor?: string;
-  /** Hosts must enforce their own bound; Waystone sends a value from 1 through 100. */
   pageSize?: number;
 }
-export interface SearchResultBase {
+export interface UnifiedSearchResult {
   kind: SearchKind;
   canonicalId: string;
-  revision: number;
+  revision: number | string;
   score: number;
   snippet?: string;
   language?: string;
   contributingStatementIds?: readonly string[];
-}
-export interface StatementSearchResult extends SearchResultBase {
-  kind: 'statement';
-  statementId: string;
-  itemId: string;
-}
-export interface ItemSearchResult extends SearchResultBase {
-  kind: 'item';
-  itemId: string;
+  itemId?: string;
+  statementId?: string;
+  taskId?: string;
+  memoryId?: string;
+  promptId?: string;
+  resourceId?: string;
+  annotationId?: string;
+  targetId?: string;
+  title?: string;
   label?: string;
-}
-export interface TaskSearchResult extends SearchResultBase {
-  kind: 'task';
-  taskId: string;
-  title?: string;
-}
-export interface MemorySearchResult extends SearchResultBase {
-  kind: 'memory';
-  memoryId: string;
-  title?: string;
-}
-export interface PromptSearchResult extends SearchResultBase {
-  kind: 'prompt';
-  promptId: string;
-  title?: string;
-}
-export interface ResourceSearchResult extends SearchResultBase {
-  kind: 'resource';
-  resourceId: string;
-  title?: string;
   mediaType?: string;
-  selector?: ContentSelector;
-}
-export interface AnnotationSearchResult extends SearchResultBase {
-  kind: 'annotation';
-  annotationId: string;
-  targetId: string;
   motivation?: string;
   selector?: ContentSelector;
 }
-export type UnifiedSearchResult =
-  | StatementSearchResult
-  | ItemSearchResult
-  | TaskSearchResult
-  | MemorySearchResult
-  | PromptSearchResult
-  | ResourceSearchResult
-  | AnnotationSearchResult;
-export type SearchReadinessMode = 'lexical-only' | 'semantic-augmented';
 export interface UnifiedSearchPage {
   results: UnifiedSearchResult[];
   nextCursor?: string;
-  readiness: SearchReadinessMode;
+  readiness: 'lexical-only' | 'semantic-augmented';
   degraded?: boolean;
   notice?: string;
 }
@@ -389,72 +392,137 @@ export type ContentSelector =
   | { type: 'text-position'; start: number; end: number }
   | { type: 'fragment'; value: string }
   | { type: string; value?: string };
-export interface ContentRevisionMetadata {
-  revision: number;
-  timestamp: string;
-  author?: string;
-  summary?: string;
-}
-export interface ResourceRecord {
+export type ActorKind = 'human' | 'agent' | 'import' | 'system';
+export interface Attribution {
   id: string;
+  kind: ActorKind;
+  name?: string;
+  organization?: string;
+  tool?: string;
+  url?: string;
+}
+export type VisibilityAtom =
+  | { kind: 'public' }
+  | { kind: 'principal'; principalId: string }
+  | { kind: 'workspace'; workspaceId: string }
+  | { kind: 'capability'; capability: string };
+export interface VisibilityScope {
+  version: 1;
+  clauses: readonly (readonly VisibilityAtom[])[];
+}
+export interface ContentAuthorization {
+  installationId: string;
+  workspaceId: string | null;
+  ownerPrincipalId: string;
+  policyRevision: number;
+  visibility: VisibilityScope;
+}
+export type ResourcePayload =
+  | { kind: 'inline-text'; text: string }
+  | {
+      kind: 'location';
+      location: string;
+      storage: 'blob' | 'file' | 'url';
+      byteLength?: number;
+    };
+export interface ResourceIntegrity {
+  algorithm: 'sha256';
+  digest: string;
+  byteLength: number;
+}
+export interface TaprootResource {
+  version: 1;
+  id: string;
+  itemId: `Q${number}`;
   revision: number;
   title?: string;
-  linkedItemIds?: readonly string[];
-  metadata?: Readonly<Record<string, string>>;
-  integrity?: string;
-  location?: string;
-  body?: string;
+  payload: ResourcePayload;
+  mediaType: string;
   language?: string;
-  mediaType?: string;
-  selectedExcerpt?: string;
-  modified?: string;
+  integrity: ResourceIntegrity;
+  attribution: Attribution;
+  authorization: ContentAuthorization;
+  createdAt: string;
+  modifiedAt: string;
+  deletedAt: string | null;
 }
-export interface ResourceInput {
+export interface TaprootCreateResourceInput {
+  id: string;
+  itemId: `Q${number}`;
   title?: string;
-  linkedItemIds?: readonly string[];
-  metadata?: Readonly<Record<string, string>>;
-  integrity?: string;
-  location?: string;
-  body?: string;
+  payload: ResourcePayload;
+  mediaType: string;
   language?: string;
-  mediaType?: string;
-  selectedExcerpt?: string;
+  integrity: ResourceIntegrity;
 }
-export interface AnnotationBodyResource {
-  resourceId: string;
+export type AnnotationBody =
+  | { kind: 'text'; text: string; mediaType?: string; language?: string }
+  | { kind: 'resource'; resourceId: string };
+export interface AnnotationSelector {
+  type: string;
+  [key: string]: unknown;
 }
-export interface AnnotationRecord {
+export interface AnnotationTarget {
+  kind: SearchKind;
+  sourceId: string;
+  selector?: AnnotationSelector;
+}
+export interface TaprootAnnotation {
+  version: 1;
   id: string;
   revision: number;
-  body?: string;
-  bodyResource?: AnnotationBodyResource;
-  targetId: string;
-  selector?: ContentSelector;
+  body: AnnotationBody;
+  target: AnnotationTarget;
   motivation?: string;
-  attributedTo?: string;
+  creator?: Attribution;
+  generator?: Attribution;
   language?: string;
   mediaType?: string;
-  inheritedVisibility?: string;
-  modified?: string;
+  attribution: Attribution;
+  authorization: ContentAuthorization;
+  createdAt: string;
+  modifiedAt: string;
+  deletedAt: string | null;
 }
-export interface AnnotationInput {
-  body?: string;
-  bodyResource?: AnnotationBodyResource;
-  targetId: string;
-  selector?: ContentSelector;
-  motivation?: string;
-  attributedTo?: string;
-  language?: string;
-  mediaType?: string;
-}
-export interface PromptRecord {
+export interface TaprootCreateAnnotationInput {
   id: string;
-  revision: number;
+  body: AnnotationBody;
+  target: AnnotationTarget;
+  targetVisibility: VisibilityScope;
+  motivation?: string;
+  creator?: Attribution;
+  generator?: Attribution;
+  language?: string;
+  mediaType?: string;
+}
+export interface PromptAttribution {
+  source?: string;
+  actor?: string;
+  note?: string;
+}
+export interface WorkshopPrompt {
+  id: string;
+  name: string;
   title: string;
-  text: string;
-  language?: string;
-  variables?: readonly string[];
-  modified?: string;
+  promptText: string;
+  scope?: string;
+  role?: string;
+  variables: Readonly<Record<string, unknown>>;
+  active: boolean;
+  priority: number;
+  order: number;
+  language: string;
+  attribution: PromptAttribution;
+  revision: number;
+  policyRevision: number;
+  installationId: string;
+  ownerPrincipalId: string;
+  workspaceId: string;
+  visibility: VisibilityScope;
+  authorizationRevision: number;
+  createdAt: string;
+  updatedAt: string;
+  deactivatedAt?: string;
 }
 export interface TaskRecord {
   id: string;
@@ -466,15 +534,43 @@ export interface MemoryRecord {
   revision: number;
   title?: string;
 }
-export interface PromptInput {
-  title: string;
-  text: string;
+export interface WorkshopCreatePromptInput {
+  id?: string;
+  name: string;
+  title?: string;
+  promptText: string;
+  scope?: string;
+  role?: string;
+  variables?: Readonly<Record<string, unknown>>;
+  active?: boolean;
+  priority?: number;
+  order?: number;
   language?: string;
-  variables?: readonly string[];
+  attribution?: PromptAttribution;
+  visibility?: VisibilityScope;
 }
-export interface RevisionPage {
-  revisions: ContentRevisionMetadata[];
-  nextCursor?: string;
+export interface WorkshopUpdatePromptInput {
+  name?: string;
+  title?: string;
+  promptText?: string;
+  scope?: string | null;
+  role?: string | null;
+  variables?: Readonly<Record<string, unknown>>;
+  active?: boolean;
+  priority?: number;
+  order?: number;
+  language?: string;
+  attribution?: PromptAttribution;
+  visibility?: VisibilityScope;
+  expectedRevision: number;
+}
+export interface WorkshopPromptRevision {
+  promptId: string;
+  revision: number;
+  prompt: WorkshopPrompt;
+  actorPrincipalId: string;
+  eventId: string;
+  createdAt: string;
 }
 
 export interface SearchFailure {
@@ -518,28 +614,51 @@ export interface BackfillEstimate {
   assumptions?: readonly string[];
 }
 export type SearchRunAction = 'play' | 'resume' | 'pause' | 'stop';
-export interface SearchAdminClient {
-  estimateBackfill(options?: RequestOptions): Promise<BackfillEstimate>;
-  approveBackfill(
-    estimateId: string,
+export type SearchAdministrationOperation =
+  | { operation: 'materialize'; maxJobs: number; maxRebuildRoots: number }
+  | { operation: 'retry-dead'; limit: number }
+  | {
+      operation: 'adopt-legacy';
+      kind: 'task' | 'memory' | 'prompt';
+      limit: number;
+    }
+  | { operation: 'start-rebuild' | 'activate-rebuild' }
+  | {
+      operation:
+        | 'semantic-select'
+        | 'semantic-reconnect'
+        | 'semantic-retire'
+        | 'semantic-delete-embeddings';
+      configurationId: string;
+    }
+  | {
+      operation: 'semantic-estimate';
+      configurationId: string;
+      policy: Readonly<Record<string, unknown>>;
+    }
+  | {
+      operation:
+        | 'semantic-approve'
+        | 'semantic-run'
+        | 'semantic-resume'
+        | 'semantic-pause'
+        | 'semantic-stop'
+        | 'semantic-retry';
+      planId: string;
+    }
+  | {
+      operation: 'semantic-exclude';
+      configurationId: string;
+      generation: number;
+      derivedId: string;
+      reason: string;
+    };
+export interface SearchAdministrationClient {
+  inspect(options?: RequestOptions): Promise<unknown>;
+  execute(
+    input: SearchAdministrationOperation,
     options?: RequestOptions,
-  ): Promise<SearchHealth>;
-  selectConfiguration(
-    id: string,
-    options?: RequestOptions,
-  ): Promise<SearchHealth>;
-  control(
-    action: SearchRunAction,
-    options?: RequestOptions,
-  ): Promise<SearchHealth>;
-  retryFailure(id: string, options?: RequestOptions): Promise<SearchHealth>;
-  excludeFailure(id: string, options?: RequestOptions): Promise<SearchHealth>;
-  reconnectCircuit(id: string, options?: RequestOptions): Promise<SearchHealth>;
-  retireConfiguration(
-    id: string,
-    options?: RequestOptions,
-  ): Promise<SearchHealth>;
-  deleteEmbeddings(id: string, options?: RequestOptions): Promise<SearchHealth>;
+  ): Promise<unknown>;
 }
 export type HostOperationKind = 'snapshot' | 'export' | 'import' | 'restore';
 export interface HostOperation {
@@ -551,6 +670,147 @@ export interface HostOperation {
   message?: string;
 }
 
+export interface TaprootResourceCollection {
+  get(id: string, options?: RequestOptions): Promise<TaprootResource>;
+  getRevision(
+    id: string,
+    revision: number,
+    options?: RequestOptions,
+  ): Promise<TaprootResource>;
+  hydrate(id: string, options?: RequestOptions): Promise<ArrayBuffer>;
+  create(
+    input: TaprootCreateResourceInput,
+    options?: RequestOptions,
+  ): Promise<TaprootResource>;
+  update(
+    id: string,
+    input: Partial<Omit<TaprootCreateResourceInput, 'id' | 'itemId'>>,
+    options: MutationOptions,
+  ): Promise<TaprootResource>;
+  delete(id: string, options: MutationOptions): Promise<TaprootResource>;
+}
+export interface TaprootAnnotationCollection {
+  get(id: string, options?: RequestOptions): Promise<TaprootAnnotation>;
+  getRevision(
+    id: string,
+    revision: number,
+    options?: RequestOptions,
+  ): Promise<TaprootAnnotation>;
+  create(
+    input: TaprootCreateAnnotationInput,
+    options?: RequestOptions,
+  ): Promise<TaprootAnnotation>;
+  update(
+    id: string,
+    input: TaprootCreateAnnotationInput,
+    options: MutationOptions,
+  ): Promise<TaprootAnnotation>;
+  delete(id: string, options: MutationOptions): Promise<TaprootAnnotation>;
+}
+export interface PromptFilters {
+  text?: string;
+  active?: boolean;
+  role?: string;
+  scope?: string;
+  cursor?: string;
+  limit?: number;
+}
+export interface PromptPage {
+  items: WorkshopPrompt[];
+  cursor?: string;
+}
+export interface WorkshopPromptCollection {
+  list(filters?: PromptFilters, options?: RequestOptions): Promise<PromptPage>;
+  get(id: string, options?: RequestOptions): Promise<WorkshopPrompt>;
+  create(
+    input: WorkshopCreatePromptInput,
+    options?: RequestOptions,
+  ): Promise<WorkshopPrompt>;
+  update(
+    id: string,
+    input: WorkshopUpdatePromptInput,
+    options?: RequestOptions,
+  ): Promise<WorkshopPrompt>;
+  delete(
+    id: string,
+    expectedRevision: number,
+    options?: RequestOptions,
+  ): Promise<void>;
+  history(
+    id: string,
+    options?: RequestOptions,
+  ): Promise<WorkshopPromptRevision[]>;
+}
+export type SearchHydratedValue =
+  | WikibaseEntity
+  | TaskRecord
+  | MemoryRecord
+  | WorkshopPrompt
+  | TaprootResource
+  | TaprootAnnotation;
+
+/** Presentation-only records. Canonical protocol clients return the types above. */
+export interface ContentRevisionMetadata {
+  revision: number;
+  timestamp: string;
+  author?: string;
+  summary?: string;
+}
+export interface RevisionPage {
+  revisions: ContentRevisionMetadata[];
+  nextCursor?: string;
+}
+export interface ResourceRecord {
+  id: string;
+  revision: number;
+  title?: string;
+  linkedItemIds?: readonly string[];
+  metadata?: Readonly<Record<string, string>>;
+  integrity?: string;
+  location?: string;
+  body?: string;
+  language?: string;
+  mediaType?: string;
+  selectedExcerpt?: string;
+  modified?: string;
+}
+export type ResourceInput = Omit<
+  ResourceRecord,
+  'id' | 'revision' | 'modified'
+>;
+export interface AnnotationBodyResource {
+  resourceId: string;
+}
+export interface AnnotationRecord {
+  id: string;
+  revision: number;
+  body?: string;
+  bodyResource?: AnnotationBodyResource;
+  targetId: string;
+  selector?: ContentSelector;
+  motivation?: string;
+  attributedTo?: string;
+  language?: string;
+  mediaType?: string;
+  inheritedVisibility?: string;
+  modified?: string;
+}
+export type AnnotationInput = Omit<
+  AnnotationRecord,
+  'id' | 'revision' | 'modified' | 'inheritedVisibility'
+>;
+export interface PromptRecord {
+  id: string;
+  revision: number;
+  title: string;
+  text: string;
+  language?: string;
+  variables?: readonly string[];
+  modified?: string;
+}
+export type PromptInput = Omit<PromptRecord, 'id' | 'revision' | 'modified'>;
+
+/** @deprecated Host-specific collection retained only as a source-level helper. */
 export interface ContentCollection<TRecord, TInput> {
   get(id: string, options?: RequestOptions): Promise<TRecord>;
   getRevision(

@@ -20,6 +20,10 @@ import {
 } from '../../src/knowledge-client-components.js';
 import type {
   SearchHealth,
+  SearchPage,
+  TaprootAnnotation,
+  TaprootResource,
+  WorkshopPrompt,
   UnifiedSearchPage,
   UnifiedSearchResult,
   WaystoneClient,
@@ -111,6 +115,25 @@ const page: UnifiedSearchPage = {
   nextCursor: 'opaque-next',
   readiness: 'semantic-augmented',
 };
+const protocolPage: SearchPage = {
+  results: results.map((result) => ({
+    kind: result.kind,
+    sourceId: result.canonicalId,
+    sourceRevision: String(result.revision),
+    score: result.score,
+    snippet: result.snippet ?? '',
+    ...(result.title ? { title: result.title } : {}),
+    ...(result.language ? { language: result.language } : {}),
+    ...(result.contributingStatementIds
+      ? {
+          match: {
+            contributingStatementIds: [...result.contributingStatementIds],
+          },
+        }
+      : {}),
+  })),
+  cursor: 'opaque-next',
+};
 
 const health: SearchHealth = {
   lexicalReady: true,
@@ -132,6 +155,82 @@ const health: SearchHealth = {
   workers: [{ worker: 'indexer', completed: 4, total: 10, state: 'running' }],
   adminAuthorized: true,
 };
+
+const visibility = { version: 1 as const, clauses: [] as const };
+const attribution = {
+  id: 'human-1',
+  kind: 'human' as const,
+  name: 'Researcher',
+};
+const authorization = {
+  installationId: 'site-1',
+  workspaceId: null,
+  ownerPrincipalId: 'human-1',
+  policyRevision: 1,
+  visibility,
+};
+function resourceFixture(
+  overrides: Partial<TaprootResource> = {},
+): TaprootResource {
+  return {
+    version: 1,
+    id: 'R1',
+    itemId: 'Q1',
+    revision: 1,
+    payload: { kind: 'inline-text', text: 'Body' },
+    mediaType: 'text/plain',
+    integrity: { algorithm: 'sha256', digest: 'abc', byteLength: 4 },
+    attribution,
+    authorization,
+    createdAt: '2026-01-01T00:00:00Z',
+    modifiedAt: '2026-01-01T00:00:00Z',
+    deletedAt: null,
+    ...overrides,
+  };
+}
+function annotationFixture(
+  overrides: Partial<TaprootAnnotation> = {},
+): TaprootAnnotation {
+  return {
+    version: 1,
+    id: 'A1',
+    revision: 1,
+    body: { kind: 'text', text: 'Note' },
+    target: { kind: 'resource', sourceId: 'R1' },
+    attribution,
+    authorization,
+    createdAt: '2026-01-01T00:00:00Z',
+    modifiedAt: '2026-01-01T00:00:00Z',
+    deletedAt: null,
+    ...overrides,
+  };
+}
+function promptFixture(
+  overrides: Partial<WorkshopPrompt> = {},
+): WorkshopPrompt {
+  return {
+    id: 'P1',
+    name: 'prompt',
+    title: 'Prompt',
+    promptText: 'Text',
+    variables: {},
+    active: true,
+    priority: 0,
+    order: 0,
+    language: 'en',
+    attribution: {},
+    revision: 1,
+    policyRevision: 1,
+    installationId: 'site-1',
+    ownerPrincipalId: 'human-1',
+    workspaceId: 'workspace-1',
+    visibility,
+    authorizationRevision: 1,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
 
 describe('unified knowledge contract UI', () => {
   it('renders every result kind, traceability, and independently ranked chunks without deduplication', () => {
@@ -156,22 +255,14 @@ describe('unified knowledge contract UI', () => {
   it('keeps filters and kind selection when explicitly recovering from an invalid cursor', async () => {
     const query = vi
       .fn<WaystoneClient['search']['query']>()
-      .mockResolvedValueOnce({
-        ...page,
-        readiness: 'lexical-only',
-        degraded: true,
-        notice: 'Semantic service unavailable.',
-      })
+      .mockResolvedValueOnce(protocolPage)
       .mockRejectedValueOnce(
         new WaystoneRequestError('Invalid cursor', {
           kind: 'validation',
           status: 400,
         }),
       )
-      .mockResolvedValueOnce({
-        results: page.results,
-        readiness: page.readiness,
-      });
+      .mockResolvedValueOnce({ results: protocolPage.results });
     const client = createMockWaystoneClient();
     client.search.query = query;
     render(<UnifiedSearchScreen client={client} initialQuery="orchid" />);
@@ -189,8 +280,8 @@ describe('unified knowledge contract UI', () => {
     );
     await waitFor(() => expect(query).toHaveBeenCalledTimes(3));
     expect(query.mock.calls[2]?.[0]).toMatchObject({
-      query: 'orchid',
-      filters: { language: 'fr' },
+      text: 'orchid',
+      filters: { languages: ['fr'] },
     });
     expect(query.mock.calls[2]?.[0]).not.toHaveProperty('cursor');
     expect(query.mock.calls[2]?.[0].kinds).toHaveLength(7);
@@ -199,48 +290,27 @@ describe('unified knowledge contract UI', () => {
 
   it('hydrates every kind through its owning client operation', async () => {
     const client = createMockWaystoneClient();
-    const getEntity = vi
-      .spyOn(client.entities, 'get')
-      .mockResolvedValue({} as never);
-    const getTask = vi
-      .spyOn(client.tasks, 'get')
-      .mockResolvedValue({} as never);
-    const getMemory = vi
-      .spyOn(client.memories, 'get')
-      .mockResolvedValue({} as never);
-    const getPrompt = vi
-      .spyOn(client.prompts, 'get')
-      .mockResolvedValue({} as never);
-    const getResource = vi
-      .spyOn(client.resources, 'get')
-      .mockResolvedValue({} as never);
-    const getAnnotation = vi
-      .spyOn(client.annotations, 'get')
+    const hydrate = vi
+      .spyOn(client.search, 'hydrate')
       .mockResolvedValue({} as never);
     for (const result of results.filter(
       (value, index) => value.kind !== 'resource' || index === 5,
     ))
       await hydrateSearchResult(client, result);
-    expect(getEntity).toHaveBeenCalledTimes(2);
-    expect(getTask).toHaveBeenCalledWith('T1');
-    expect(getMemory).toHaveBeenCalledWith('M1');
-    expect(getPrompt).toHaveBeenCalledWith('PR1');
-    expect(getResource).toHaveBeenCalledWith('R1');
-    expect(getAnnotation).toHaveBeenCalledWith('A1');
+    expect(hydrate).toHaveBeenCalledTimes(7);
+    expect(hydrate).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'prompt', sourceId: 'PR1' }),
+    );
   });
 
   it('keeps Resource, linked Item, Annotation, and Prompt identities visibly distinct and renders untrusted text safely', () => {
     const { rerender } = render(
       <ResourceView
-        resource={{
-          id: 'R1',
+        resource={resourceFixture({
           revision: 2,
           title: '<img onerror=alert(1)>',
-          linkedItemIds: ['Q1'],
-          location: 'javascript:alert(1)',
-          body: '<script>bad()</script>',
-          selectedExcerpt: 'Exact excerpt',
-        }}
+          payload: { kind: 'inline-text', text: '<script>bad()</script>' },
+        })}
       />,
     );
     expect(screen.getByRole('link', { name: 'Item Q1' })).toHaveAttribute(
@@ -253,32 +323,27 @@ describe('unified knowledge contract UI', () => {
     expect(screen.getByText('<script>bad()</script>')).toBeInTheDocument();
     rerender(
       <AnnotationView
-        annotation={{
-          id: 'A1',
-          revision: 1,
-          body: 'Small embedded annotation',
-          bodyResource: { resourceId: 'R2' },
-          targetId: 'R1',
-          inheritedVisibility: 'private',
-        }}
+        annotation={annotationFixture({
+          body: { kind: 'resource', resourceId: 'R2' },
+        })}
       />,
     );
     expect(
-      screen.getByRole('link', { name: 'Resource R1' }),
+      screen.getByRole('link', { name: 'resource R1' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Resource R2' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('private')).toBeInTheDocument();
+    expect(screen.getAllByText('1')).toHaveLength(2);
     rerender(
       <PromptView
-        prompt={{
+        prompt={promptFixture({
           id: 'PR1',
           revision: 3,
           title: 'Summarize',
-          text: 'Use {{source}}',
-          variables: ['source'],
-        }}
+          promptText: 'Use {{source}}',
+          variables: { source: { type: 'string' } },
+        })}
       />,
     );
     expect(screen.getByText('Use {{source}}')).toBeInTheDocument();
@@ -310,48 +375,15 @@ describe('unified knowledge contract UI', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('displays unknown costs and confirms budget, exclusion, retirement, deletion, and reconnect controls', async () => {
-    const client = createMockWaystoneClient();
-    client.search.admin.estimateBackfill = vi.fn().mockResolvedValue({
-      estimateId: 'E1',
-      items: 12,
-      assumptions: ['Tokenizer estimate'],
-    });
-    const approveBackfill = vi.fn().mockResolvedValue(health);
-    const excludeFailure = vi.fn().mockResolvedValue(health);
-    const retireConfiguration = vi.fn().mockResolvedValue(health);
-    const deleteEmbeddings = vi.fn().mockResolvedValue(health);
-    const reconnectCircuit = vi.fn().mockResolvedValue(health);
-    client.search.admin.approveBackfill = approveBackfill;
-    client.search.admin.excludeFailure = excludeFailure;
-    client.search.admin.retireConfiguration = retireConfiguration;
-    client.search.admin.deleteEmbeddings = deleteEmbeddings;
-    client.search.admin.reconnectCircuit = reconnectCircuit;
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<SearchAdministration client={client} health={health} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Estimate backfill' }));
-    expect(
-      await screen.findByText('Unknown — approval may still incur charges'),
-    ).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Approve backfill budget' }),
+  it('does not invent required search administration operation fields', () => {
+    render(
+      <SearchAdministration
+        client={createMockWaystoneClient()}
+        health={health}
+      />,
     );
-    await waitFor(() => expect(approveBackfill).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: 'Exclude' }));
-    await waitFor(() => expect(excludeFailure).toHaveBeenCalled());
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Retire configuration' }),
-    );
-    await waitFor(() => expect(retireConfiguration).toHaveBeenCalled());
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Delete retained embeddings' }),
-    );
-    await waitFor(() => expect(deleteEmbeddings).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
-    await waitFor(() =>
-      expect(reconnectCircuit).toHaveBeenCalledWith('provider'),
-    );
-    expect(confirm).toHaveBeenCalledTimes(4);
+    expect(screen.getByText(/exact typed operations/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('presents host-only operation progress and requires restore confirmation', async () => {
@@ -382,18 +414,14 @@ describe('unified knowledge contract UI', () => {
 
   it('has no automated accessibility violations across search, health, and typed content', async () => {
     const client = createMockWaystoneClient();
-    client.search.query = vi.fn().mockResolvedValue(page);
+    client.search.query = vi.fn().mockResolvedValue(protocolPage);
     const { container } = render(
       <main>
         <UnifiedSearchScreen client={client} initialQuery="orchid" />
         <SearchAdministration client={client} health={health} />
-        <ResourceView resource={{ id: 'R1', revision: 1, title: 'Source' }} />
-        <AnnotationView
-          annotation={{ id: 'A1', revision: 1, targetId: 'R1', body: 'Note' }}
-        />
-        <PromptView
-          prompt={{ id: 'P1', revision: 1, title: 'Prompt', text: 'Text' }}
-        />
+        <ResourceView resource={resourceFixture({ title: 'Source' })} />
+        <AnnotationView annotation={annotationFixture()} />
+        <PromptView prompt={promptFixture()} />
       </main>,
     );
     const audit = await axe.run(container, {

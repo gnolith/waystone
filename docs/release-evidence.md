@@ -2,7 +2,7 @@
 
 Status at capture: **PACKAGE CHECKS PASSED; 0.1.2 CANDIDATE WAS NOT YET TAGGED OR PUBLISHED**
 
-> This is an immutable pre-publication snapshot retained for the 0.1.2 audit trail. It does not describe the current development branch, current test count, current Taproot peer floor, or current package archive. Current compatibility is defined by [Taproot integration](taproot-dependencies.md), [Upgrade policy](upgrades.md), the package manifest, and the latest successful `npm run check`. The current line supersedes the Taproot 0.2 and 23-test evidence below with an optional `>=0.3.0 <0.4.0` peer, 34 repository tests, and exact packed conformance against Taproot commit `38b97616da07ee349cf30877653acd84d1689139`.
+> This is an immutable pre-publication snapshot retained for the 0.1.2 audit trail. It does not describe the current development branch, test count, peer floors, or package archive. Current compatibility is defined by [Taproot and Workshop protocol boundary](taproot-dependencies.md), [Upgrade policy](upgrades.md), the package manifest, and the latest successful `npm run check`.
 
 This file records historical evidence attributable to the 0.1.2 `@gnolith/waystone` candidate. It does not qualify assembly, provisioning, deployment, or acceptance of a complete Gnolith Site.
 
