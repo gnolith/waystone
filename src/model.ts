@@ -58,6 +58,8 @@ export interface WaystoneReference {
 }
 export interface WaystoneStatement {
   id: string;
+  /** Authored natural-language description of this exact statement revision. */
+  text: string;
   rank: StatementRank;
   mainsnak: WaystoneSnak;
   qualifiers?: Record<string, WaystoneSnak[]>;
@@ -128,7 +130,13 @@ export type EntityMutationOperation =
       statement: WaystoneStatement;
     }
   | { op: 'remove-statement'; statementId: string }
-  | { op: 'set-rank'; statementId: string; rank: StatementRank }
+  | {
+      op: 'set-rank';
+      statementId: string;
+      rank: StatementRank;
+      /** Newly authored text for this exact statement revision. */
+      text: string;
+    }
   | { op: 'redirect'; target: EntityId }
   | { op: 'soft-delete' }
   | { op: 'revert'; revision: number };

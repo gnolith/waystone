@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createWaystoneClient } from '../../src/create-client.js';
 import { WaystoneRequestError } from '../../src/errors.js';
+import { fixtureItem } from '../../src/fixture-data.js';
+import type { EntityMutationOperation } from '../../src/model.js';
 
 describe('createWaystoneClient', () => {
   it('constructs configurable URLs and authentication without reading browser globals at import', async () => {
@@ -93,6 +95,63 @@ describe('createWaystoneClient', () => {
       ok: true,
     });
   });
+  it('serializes authored statement revision text without normalization', async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json(fixtureItem));
+    const client = createWaystoneClient({ fetch: fetcher });
+    await client.entities.mutate(
+      'Q1',
+      {
+        operations: [
+          {
+            op: 'set-rank',
+            statementId: 'Q1$preferred',
+            rank: 'normal',
+            text: '  Exact authored revision text.  ',
+          },
+        ],
+      },
+      { expectedRevision: 7 },
+    );
+    const body = fetcher.mock.calls[0]?.[1]?.body;
+    expect(typeof body).toBe('string');
+    expect(JSON.parse(body as string)).toEqual({
+      operations: [
+        {
+          op: 'set-rank',
+          statementId: 'Q1$preferred',
+          rank: 'normal',
+          text: '  Exact authored revision text.  ',
+        },
+      ],
+    });
+  });
+  it.each([
+    ['absent', undefined],
+    ['empty', ''],
+    ['Unicode whitespace', '\u00a0\u2003'],
+  ])(
+    'rejects %s statement revision text before transport',
+    async (_case, text) => {
+      const fetcher = vi.fn<typeof fetch>();
+      const client = createWaystoneClient({ fetch: fetcher });
+      const operation = {
+        op: 'set-rank',
+        statementId: 'Q1$preferred',
+        rank: 'normal',
+        text,
+      } as EntityMutationOperation;
+      await expect(
+        client.entities.mutate(
+          'Q1',
+          { operations: [operation] },
+          { expectedRevision: 7 },
+        ),
+      ).rejects.toMatchObject({ kind: 'validation' });
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
   it('decodes canonical Taproot envelopes returned by generated Site handlers', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({

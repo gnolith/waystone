@@ -4,7 +4,8 @@
  * These deliberately live in Waystone rather than referring to Taproot's
  * declaration entry point. That keeps UI consumers from resolving Taproot's
  * persistence and RDF declaration graph while remaining structurally
- * compatible with the public Taproot 0.2 JSON contract.
+ * compatible with the Taproot 0.3 statement-text contract pinned in
+ * docs/taproot-dependencies.md.
  */
 export type TaprootEntityId = `Q${number}` | `P${number}`;
 export type TaprootReferencedEntityId =
@@ -98,6 +99,8 @@ export interface TaprootReference {
 export interface TaprootStatement {
   id: string;
   type: 'statement';
+  /** Authored natural-language description of this exact statement revision. */
+  text: string;
   rank: TaprootRank;
   mainsnak: TaprootSnak;
   qualifiers: Record<TaprootPropertyId, TaprootSnak[]>;
@@ -201,23 +204,41 @@ export type TaprootEntityCommand =
       statement: TaprootStatement;
     }
   | { type: 'remove-statement'; statementId: string }
-  | { type: 'set-statement-rank'; statementId: string; rank: TaprootRank }
-  | { type: 'add-qualifier'; statementId: string; snak: TaprootSnak }
+  | {
+      type: 'set-statement-rank';
+      statementId: string;
+      rank: TaprootRank;
+      text: string;
+    }
+  | {
+      type: 'add-qualifier';
+      statementId: string;
+      snak: TaprootSnak;
+      text: string;
+    }
   | {
       type: 'remove-qualifier';
       statementId: string;
       property: TaprootPropertyId;
       ordinal: number;
+      text: string;
     }
   | {
       type: 'add-reference';
       statementId: string;
       reference: TaprootReference;
+      text: string;
     }
   | {
       type: 'replace-reference';
       statementId: string;
       hash: string;
       reference: TaprootReference;
+      text: string;
     }
-  | { type: 'remove-reference'; statementId: string; hash: string };
+  | {
+      type: 'remove-reference';
+      statementId: string;
+      hash: string;
+      text: string;
+    };
