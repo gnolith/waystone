@@ -9,10 +9,22 @@ export default function Page() {
       <AnnotationPage
         client={client}
         annotation={{
+          version: 1,
           id: 'A1',
           revision: 1,
-          targetId: 'R1',
-          body: 'Canary annotation',
+          target: { kind: 'resource', sourceId: 'R1' },
+          body: { kind: 'text', text: 'Canary annotation' },
+          attribution: { id: 'canary', kind: 'system' },
+          authorization: {
+            installationId: 'canary',
+            workspaceId: null,
+            ownerPrincipalId: 'canary',
+            policyRevision: 1,
+            visibility: { version: 1, clauses: [] },
+          },
+          createdAt: '2026-01-01T00:00:00Z',
+          modifiedAt: '2026-01-01T00:00:00Z',
+          deletedAt: null,
         }}
       />
     </CanaryShell>

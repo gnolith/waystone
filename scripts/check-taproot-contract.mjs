@@ -3,100 +3,55 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const taprootCommit = '38b97616da07ee349cf30877653acd84d1689139';
+const TAPROOT = '@gnolith/taproot@0.4.0';
+const WORKSHOP = '@gnolith/workshop@0.4.1';
 const npmCli = process.env.npm_execpath;
-if (!npmCli) throw new Error('Run the Taproot contract check through npm.');
+if (!npmCli) throw new Error('Run protocol conformance through npm.');
 
-function run(command, args, cwd = process.cwd()) {
-  const executable = command === 'npm' ? process.execPath : command;
-  const commandArgs = command === 'npm' ? [npmCli, ...args] : args;
-  const result = spawnSync(executable, commandArgs, {
+function run(args, cwd = process.cwd()) {
+  const result = spawnSync(process.execPath, [npmCli, ...args], {
     cwd,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   if (result.status !== 0) {
-    if (result.stdout) process.stderr.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-    if (result.error) process.stderr.write(`${result.error.message}\n`);
+    process.stderr.write(result.stdout ?? '');
+    process.stderr.write(result.stderr ?? '');
     process.exit(result.status ?? 1);
   }
   return result.stdout.trim();
 }
-
-function packedArchive(output, root) {
-  const result = JSON.parse(output);
-  return path.join(root, path.basename(result[0].filename));
+function archive(output, root) {
+  return path.join(root, path.basename(JSON.parse(output)[0].filename));
 }
 
-const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'waystone-taproot-'));
-const taproot = path.join(temporaryRoot, 'taproot');
-const consumer = path.join(temporaryRoot, 'consumer');
-
+const root = mkdtempSync(path.join(tmpdir(), 'waystone-protocol-'));
+const consumer = path.join(root, 'consumer');
 try {
-  run('git', [
-    'clone',
-    '--quiet',
-    '--filter=blob:none',
-    '--no-checkout',
-    'https://github.com/gnolith/taproot.git',
-    taproot,
-  ]);
-  run('git', ['checkout', '--quiet', '--detach', taprootCommit], taproot);
-  const checkedOut = run('git', ['rev-parse', 'HEAD'], taproot);
-  if (checkedOut !== taprootCommit) {
-    throw new Error(`Expected Taproot ${taprootCommit}, found ${checkedOut}.`);
-  }
-  run('npm', ['ci', '--ignore-scripts'], taproot);
-  run('npm', ['run', 'build'], taproot);
-  const taprootArchive = packedArchive(
-    run(
-      'npm',
-      [
-        'pack',
-        '--ignore-scripts',
-        '--json',
-        '--pack-destination',
-        temporaryRoot,
-      ],
-      taproot,
-    ),
-    temporaryRoot,
+  run(['run', 'build']);
+  const waystone = archive(
+    run(['pack', '--ignore-scripts', '--json', '--pack-destination', root]),
+    root,
   );
-  const waystoneArchive = packedArchive(
-    run('npm', [
-      'pack',
-      '--ignore-scripts',
-      '--json',
-      '--pack-destination',
-      temporaryRoot,
-    ]),
-    temporaryRoot,
-  );
-
   mkdirSync(path.join(consumer, 'src'), { recursive: true });
   writeFileSync(
     path.join(consumer, 'package.json'),
-    `${JSON.stringify(
-      {
-        name: 'waystone-taproot-contract',
-        version: '0.0.0',
-        private: true,
-        type: 'module',
-      },
+    JSON.stringify(
+      { name: 'waystone-protocol-conformance', private: true, type: 'module' },
       null,
       2,
-    )}\n`,
+    ),
   );
   writeFileSync(
     path.join(consumer, 'tsconfig.json'),
-    `${JSON.stringify(
+    JSON.stringify(
       {
         compilerOptions: {
           target: 'ES2022',
           module: 'NodeNext',
           moduleResolution: 'NodeNext',
           strict: true,
+          exactOptionalPropertyTypes: true,
           skipLibCheck: true,
           noEmit: true,
           types: [],
@@ -105,21 +60,47 @@ try {
       },
       null,
       2,
-    )}\n`,
+    ),
   );
   writeFileSync(
     path.join(consumer, 'src', 'contract.ts'),
-    `import type { EntityCommand, Statement } from '@gnolith/taproot';\nimport type { TaprootEntityCommand, TaprootStatement } from '@gnolith/waystone';\n\ndeclare const upstreamStatement: Statement;\ndeclare const waystoneStatement: TaprootStatement;\nconst upstreamFromWaystone: Statement = waystoneStatement;\nconst waystoneFromUpstream: TaprootStatement = upstreamStatement;\n\ndeclare const upstreamCommand: EntityCommand;\ndeclare const waystoneCommand: TaprootEntityCommand;\nconst upstreamCommandFromWaystone: EntityCommand = waystoneCommand;\nconst waystoneCommandFromUpstream: TaprootEntityCommand = upstreamCommand;\nvoid upstreamFromWaystone;\nvoid waystoneFromUpstream;\nvoid upstreamCommandFromWaystone;\nvoid waystoneCommandFromUpstream;\n`,
+    `
+import type {
+  SearchRequest, SearchPage, ResourceV1, CreateResourceInputV1,
+  AnnotationV1, CreateAnnotationInputV1, Statement, EntityCommand,
+} from '@gnolith/taproot';
+import type { Prompt, CreatePromptInput, UpdatePromptInput, PromptRevision } from '@gnolith/workshop/protocol';
+import type {
+  SearchRequest as WSearchRequest, SearchPage as WSearchPage,
+  TaprootResource, TaprootCreateResourceInput, TaprootAnnotation,
+  TaprootCreateAnnotationInput, WorkshopPrompt, WorkshopCreatePromptInput,
+  WorkshopUpdatePromptInput, WorkshopPromptRevision, TaprootStatement, TaprootEntityCommand,
+} from '@gnolith/waystone';
+type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type Assert<T extends true> = T;
+type _SearchRequest = Assert<Equal<SearchRequest, WSearchRequest>>;
+type _SearchPage = Assert<Equal<SearchPage, WSearchPage>>;
+type _Resource = Assert<Equal<ResourceV1, TaprootResource>>;
+type _CreateResource = Assert<Equal<CreateResourceInputV1, TaprootCreateResourceInput>>;
+type _Annotation = Assert<Equal<AnnotationV1, TaprootAnnotation>>;
+type _CreateAnnotation = Assert<Equal<CreateAnnotationInputV1, TaprootCreateAnnotationInput>>;
+type _Prompt = Assert<Equal<Prompt, WorkshopPrompt>>;
+type _CreatePrompt = Assert<Equal<CreatePromptInput, WorkshopCreatePromptInput>>;
+type _UpdatePrompt = Assert<Equal<UpdatePromptInput, WorkshopUpdatePromptInput>>;
+type _PromptRevision = Assert<Equal<PromptRevision, WorkshopPromptRevision>>;
+type _Statement = Assert<Equal<Statement, TaprootStatement>>;
+type _EntityCommand = Assert<Equal<EntityCommand, TaprootEntityCommand>>;
+`,
   );
   run(
-    'npm',
     [
       'install',
       '--ignore-scripts',
       '--legacy-peer-deps',
       '--save-exact',
-      taprootArchive,
-      waystoneArchive,
+      waystone,
+      TAPROOT,
+      WORKSHOP,
       '@types/react@19.2.14',
       'react@19.2.6',
       'react-dom@19.2.6',
@@ -127,10 +108,10 @@ try {
     ],
     consumer,
   );
-  run('npm', ['exec', '--', 'tsc', '-p', 'tsconfig.json'], consumer);
+  run(['exec', '--', 'tsc', '-p', 'tsconfig.json'], consumer);
   console.log(
-    `Waystone statement and mutation contracts match exact packed Taproot commit ${taprootCommit}.`,
+    `Waystone declarations exactly match ${TAPROOT} and ${WORKSHOP} across search, content, prompts, statements, and commands.`,
   );
 } finally {
-  rmSync(temporaryRoot, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
 }

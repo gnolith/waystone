@@ -1,6 +1,6 @@
 {
   "name": "@gnolith/waystone",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The accessible human interface and extension surface for Gnolith research Sites.",
   "type": "module",
   "sideEffects": [
@@ -75,13 +75,17 @@
     "prepack": "npm run check:package"
   },
   "peerDependencies": {
-    "@gnolith/taproot": ">=0.3.0 <0.5.0",
+    "@gnolith/taproot": ">=0.4.0 <0.5.0",
+    "@gnolith/workshop": ">=0.4.1 <0.5.0",
     "@types/react": ">=19 <20",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"
   },
   "peerDependenciesMeta": {
     "@gnolith/taproot": {
+      "optional": true
+    },
+    "@gnolith/workshop": {
       "optional": true
     }
   },

@@ -4,6 +4,12 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-22
+
+- Corrected the browser protocol boundary to exact public Taproot 0.4.0 and Workshop 0.4.1 artifacts: structured POST search, string source revisions, generic match/cursor preservation, typed references and hydration, canonical Resource/Annotation CRUD, complete Prompt CRUD/history metadata, and exact search-administration operations.
+- Added lossless runtime adapter tests and packed bidirectional declaration conformance beyond Statement and EntityCommand.
+- Removed the stale 0.3 compatibility claim; the optional Taproot peer floor is now 0.4.0 and the Workshop peer floor is 0.4.1.
+
 ## [0.2.0] - 2026-07-22
 
 ### Added
@@ -62,7 +68,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 - First production-candidate public contract.
 
-[Unreleased]: https://github.com/gnolith/waystone/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/gnolith/waystone/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/gnolith/waystone/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/gnolith/waystone/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/gnolith/waystone/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/gnolith/waystone/compare/v0.1.0...v0.1.1

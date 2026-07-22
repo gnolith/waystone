@@ -12,20 +12,13 @@ import type {
   EntitySearchResult,
   EntityRevisionPage,
   CreateEntityInput,
-  AnnotationInput,
-  AnnotationRecord,
-  BackfillEstimate,
+  TaprootCreateAnnotationInput,
   HostOperation,
   HostOperationKind,
-  PromptInput,
-  PromptRecord,
-  ResourceInput,
-  ResourceRecord,
-  RevisionPage,
-  SearchHealth,
-  SearchRunAction,
-  UnifiedSearchInput,
-  UnifiedSearchPage,
+  WorkshopCreatePromptInput,
+  TaprootCreateResourceInput,
+  SearchRequest,
+  SearchPage,
   TaskRecord,
   MemoryRecord,
 } from './model.js';
@@ -39,6 +32,17 @@ import {
   type TaprootStoredEntity,
   type TaprootWikibaseEntity,
 } from './taproot-adapter.js';
+import {
+  decodeAnnotation,
+  decodePrompt,
+  decodePromptHistory,
+  decodeResource,
+  decodeSearchPage,
+  encodeAnnotationInput,
+  encodePromptInput,
+  encodeResourceInput,
+  encodeSearchRequest,
+} from './protocol-adapters.js';
 
 export interface WaystoneApiPaths {
   entities: string;
@@ -54,6 +58,7 @@ export interface WaystoneApiPaths {
   resources: string;
   resource(id: string): string;
   resourceRevision(id: string, revision: number): string;
+  resourcePayload(id: string): string;
   resourceRevisions(id: string): string;
   annotations: string;
   annotation(id: string): string;
@@ -89,13 +94,14 @@ const defaultPaths: WaystoneApiPaths = {
   sparql: '/api/sparql',
   sparqlValidate: '/api/sparql/validate',
   sparqlDryRun: '/api/sparql/dry-run',
-  search: '/api/search',
-  searchHealth: '/api/search/health',
-  searchAdmin: '/api/search/admin',
+  search: '/api/workshop/search',
+  searchHealth: '/api/workshop/search/status',
+  searchAdmin: '/api/workshop/search/admin',
   resources: '/api/resources',
   resource: (id) => `/api/resources/${encodeURIComponent(id)}`,
   resourceRevision: (id, revision) =>
     `/api/resources/${encodeURIComponent(id)}/revisions/${revision}`,
+  resourcePayload: (id) => `/api/resources/${encodeURIComponent(id)}/payload`,
   resourceRevisions: (id) =>
     `/api/resources/${encodeURIComponent(id)}/revisions`,
   annotations: '/api/annotations',
@@ -104,13 +110,14 @@ const defaultPaths: WaystoneApiPaths = {
     `/api/annotations/${encodeURIComponent(id)}/revisions/${revision}`,
   annotationRevisions: (id) =>
     `/api/annotations/${encodeURIComponent(id)}/revisions`,
-  prompts: '/api/prompts',
-  prompt: (id) => `/api/prompts/${encodeURIComponent(id)}`,
+  prompts: '/api/workshop/prompts',
+  prompt: (id) => `/api/workshop/prompts/${encodeURIComponent(id)}`,
   promptRevision: (id, revision) =>
-    `/api/prompts/${encodeURIComponent(id)}/revisions/${revision}`,
-  promptRevisions: (id) => `/api/prompts/${encodeURIComponent(id)}/revisions`,
-  task: (id) => `/api/tasks/${encodeURIComponent(id)}`,
-  memory: (id) => `/api/memories/${encodeURIComponent(id)}`,
+    `/api/workshop/prompts/${encodeURIComponent(id)}/revisions/${revision}`,
+  promptRevisions: (id) =>
+    `/api/workshop/prompts/${encodeURIComponent(id)}/history`,
+  task: (id) => `/api/workshop/tasks/${encodeURIComponent(id)}`,
+  memory: (id) => `/api/workshop/memories/${encodeURIComponent(id)}`,
   hostOperations: '/api/operations',
 };
 
@@ -141,10 +148,16 @@ async function readError(response: Response): Promise<WaystoneRequestError> {
     body && typeof body === 'object'
       ? (body as Record<string, unknown>)
       : undefined;
+  const nestedError =
+    record?.error && typeof record.error === 'object'
+      ? (record.error as Record<string, unknown>)
+      : undefined;
   const message =
     typeof record?.message === 'string'
       ? record.message
-      : `Request failed with status ${response.status}`;
+      : typeof nestedError?.message === 'string'
+        ? nestedError.message
+        : `Request failed with status ${response.status}`;
   const requestId =
     response.headers.get('x-request-id') ??
     (typeof record?.requestId === 'string' ? record.requestId : undefined);
@@ -283,51 +296,23 @@ export function createWaystoneClient(
       : {}),
   });
 
-  const contentCollection = <TRecord, TInput>(config: {
-    collection: string;
-    item(id: string): string;
-    revision(id: string, revision: number): string;
-    revisions(id: string): string;
-  }) => ({
-    get(id: string, requestOptions?: RequestOptions) {
-      return request<TRecord>(config.item(id), {}, requestOptions);
-    },
-    getRevision(id: string, revision: number, requestOptions?: RequestOptions) {
-      return request<TRecord>(
-        config.revision(id, revision),
-        {},
-        requestOptions,
-      );
-    },
-    listRevisions(id: string, requestOptions?: RequestOptions) {
-      return request<RevisionPage>(config.revisions(id), {}, requestOptions);
-    },
-    create(input: TInput, requestOptions?: RequestOptions) {
-      return request<TRecord>(
-        config.collection,
-        mutation('POST', input),
-        requestOptions,
-      );
-    },
-    update(id: string, input: TInput, mutationOptions?: MutationOptions) {
-      return request<TRecord>(
-        config.item(id),
-        mutation('PATCH', input, mutationOptions),
-        mutationOptions,
-      );
-    },
-  });
-
-  const adminAction = <T = SearchHealth>(
-    action: string,
-    body: unknown = {},
+  async function requestBinary(
+    path: string,
     requestOptions?: RequestOptions,
-  ) =>
-    request<T>(
-      `${paths.searchAdmin}/${action}`,
-      mutation('POST', body),
-      requestOptions,
+  ): Promise<ArrayBuffer> {
+    const headers = new Headers(options.defaultHeaders);
+    new Headers(requestOptions?.headers).forEach((value, key) =>
+      headers.set(key, value),
     );
+    const token = await options.getAccessToken?.();
+    if (token) headers.set('authorization', `Bearer ${token}`);
+    const response = await fetcher(resolveUrl(options.baseUrl, path), {
+      headers,
+      ...(requestOptions?.signal ? { signal: requestOptions.signal } : {}),
+    });
+    if (!response.ok) throw await readError(response);
+    return response.arrayBuffer();
+  }
 
   return {
     entities: {
@@ -445,85 +430,187 @@ export function createWaystoneClient(
       },
     },
     search: {
-      query(input: UnifiedSearchInput, requestOptions?: RequestOptions) {
-        if (!input.query.trim())
+      query(input: SearchRequest, requestOptions?: RequestOptions) {
+        if (!input.text.trim())
           throw new WaystoneRequestError('A search query is required.', {
             kind: 'validation',
           });
         if (
-          input.pageSize !== undefined &&
-          (!Number.isInteger(input.pageSize) ||
-            input.pageSize < 1 ||
-            input.pageSize > 100)
+          input.limit !== undefined &&
+          (!Number.isInteger(input.limit) ||
+            input.limit < 1 ||
+            input.limit > 100)
         )
           throw new WaystoneRequestError(
             'Search page size must be between 1 and 100.',
             { kind: 'validation' },
           );
-        const query = new URLSearchParams({ q: input.query });
-        for (const kind of input.kinds ?? []) query.append('kind', kind);
-        if (input.cursor) query.set('cursor', input.cursor);
-        if (input.pageSize !== undefined)
-          query.set('pageSize', String(input.pageSize));
-        for (const [key, value] of Object.entries(input.filters ?? {}))
-          if (typeof value === 'string' && value) query.set(key, value);
-        return request<UnifiedSearchPage>(
-          resolveUrl(undefined, paths.search, query),
-          {},
+        return request<SearchPage>(
+          paths.search,
+          mutation('POST', encodeSearchRequest(input)),
           requestOptions,
-        );
+        ).then(decodeSearchPage);
       },
-      health(requestOptions?: RequestOptions) {
-        return request<SearchHealth>(paths.searchHealth, {}, requestOptions);
+      hydrate(result, requestOptions) {
+        switch (result.kind) {
+          case 'statement':
+          case 'item':
+            return request<unknown>(
+              paths.entity(result.sourceId),
+              {},
+              requestOptions,
+            ).then(decodeEntity);
+          case 'task':
+            return request<TaskRecord>(
+              paths.task(result.sourceId),
+              {},
+              requestOptions,
+            );
+          case 'memory':
+            return request<MemoryRecord>(
+              paths.memory(result.sourceId),
+              {},
+              requestOptions,
+            );
+          case 'prompt':
+            return request<unknown>(
+              paths.prompt(result.sourceId),
+              {},
+              requestOptions,
+            ).then(decodePrompt);
+          case 'resource':
+            return request<unknown>(
+              paths.resource(result.sourceId),
+              {},
+              requestOptions,
+            ).then(decodeResource);
+          case 'annotation':
+            return request<unknown>(
+              paths.annotation(result.sourceId),
+              {},
+              requestOptions,
+            ).then(decodeAnnotation);
+        }
       },
       admin: {
-        estimateBackfill(requestOptions?: RequestOptions) {
-          return adminAction<BackfillEstimate>('estimate', {}, requestOptions);
+        inspect(requestOptions?: RequestOptions) {
+          return request<unknown>(paths.searchAdmin, {}, requestOptions);
         },
-        approveBackfill(estimateId: string, requestOptions?: RequestOptions) {
-          return adminAction('approve', { estimateId }, requestOptions);
-        },
-        selectConfiguration(id: string, requestOptions?: RequestOptions) {
-          return adminAction('configuration/select', { id }, requestOptions);
-        },
-        control(action: SearchRunAction, requestOptions?: RequestOptions) {
-          return adminAction('run', { action }, requestOptions);
-        },
-        retryFailure(id: string, requestOptions?: RequestOptions) {
-          return adminAction('failure/retry', { id }, requestOptions);
-        },
-        excludeFailure(id: string, requestOptions?: RequestOptions) {
-          return adminAction('failure/exclude', { id }, requestOptions);
-        },
-        reconnectCircuit(id: string, requestOptions?: RequestOptions) {
-          return adminAction('circuit/reconnect', { id }, requestOptions);
-        },
-        retireConfiguration(id: string, requestOptions?: RequestOptions) {
-          return adminAction('configuration/retire', { id }, requestOptions);
-        },
-        deleteEmbeddings(id: string, requestOptions?: RequestOptions) {
-          return adminAction('embeddings/delete', { id }, requestOptions);
+        execute(
+          input: Readonly<Record<string, unknown>>,
+          requestOptions?: RequestOptions,
+        ) {
+          return request<unknown>(
+            paths.searchAdmin,
+            mutation('POST', input),
+            requestOptions,
+          );
         },
       },
     },
-    resources: contentCollection<ResourceRecord, ResourceInput>({
-      collection: paths.resources,
-      item: paths.resource,
-      revision: paths.resourceRevision,
-      revisions: paths.resourceRevisions,
-    }),
-    annotations: contentCollection<AnnotationRecord, AnnotationInput>({
-      collection: paths.annotations,
-      item: paths.annotation,
-      revision: paths.annotationRevision,
-      revisions: paths.annotationRevisions,
-    }),
-    prompts: contentCollection<PromptRecord, PromptInput>({
-      collection: paths.prompts,
-      item: paths.prompt,
-      revision: paths.promptRevision,
-      revisions: paths.promptRevisions,
-    }),
+    resources: {
+      get: (id, requestOptions) =>
+        request<unknown>(paths.resource(id), {}, requestOptions).then(
+          decodeResource,
+        ),
+      getRevision: (id, revision, requestOptions) =>
+        request<unknown>(
+          paths.resourceRevision(id, revision),
+          {},
+          requestOptions,
+        ).then(decodeResource),
+      hydrate: (id, requestOptions) =>
+        requestBinary(paths.resourcePayload(id), requestOptions),
+      create: (input: TaprootCreateResourceInput, requestOptions) =>
+        request<unknown>(
+          paths.resources,
+          mutation('POST', encodeResourceInput(input)),
+          requestOptions,
+        ).then(decodeResource),
+      update: (id, input, mutationOptions) =>
+        request<unknown>(
+          paths.resource(id),
+          mutation('PATCH', input, mutationOptions),
+          mutationOptions,
+        ).then(decodeResource),
+      delete: (id, mutationOptions) =>
+        request<unknown>(
+          paths.resource(id),
+          mutation('DELETE', undefined, mutationOptions),
+          mutationOptions,
+        ).then(decodeResource),
+    },
+    annotations: {
+      get: (id, requestOptions) =>
+        request<unknown>(paths.annotation(id), {}, requestOptions).then(
+          decodeAnnotation,
+        ),
+      getRevision: (id, revision, requestOptions) =>
+        request<unknown>(
+          paths.annotationRevision(id, revision),
+          {},
+          requestOptions,
+        ).then(decodeAnnotation),
+      create: (input: TaprootCreateAnnotationInput, requestOptions) =>
+        request<unknown>(
+          paths.annotations,
+          mutation('POST', encodeAnnotationInput(input)),
+          requestOptions,
+        ).then(decodeAnnotation),
+      update: (id, input, mutationOptions) =>
+        request<unknown>(
+          paths.annotation(id),
+          mutation('PATCH', encodeAnnotationInput(input), mutationOptions),
+          mutationOptions,
+        ).then(decodeAnnotation),
+      delete: (id, mutationOptions) =>
+        request<unknown>(
+          paths.annotation(id),
+          mutation('DELETE', undefined, mutationOptions),
+          mutationOptions,
+        ).then(decodeAnnotation),
+    },
+    prompts: {
+      list(filters, requestOptions) {
+        const query = new URLSearchParams();
+        for (const [key, value] of Object.entries(filters ?? {}))
+          if (value !== undefined) query.set(key, String(value));
+        return request<import('./model.js').PromptPage>(
+          resolveUrl(undefined, paths.prompts, query),
+          {},
+          requestOptions,
+        ).then((page) => ({ ...page, items: page.items.map(decodePrompt) }));
+      },
+      get: (id, requestOptions) =>
+        request<unknown>(paths.prompt(id), {}, requestOptions).then(
+          decodePrompt,
+        ),
+      create: (input: WorkshopCreatePromptInput, requestOptions) =>
+        request<unknown>(
+          paths.prompts,
+          mutation('POST', encodePromptInput(input)),
+          requestOptions,
+        ).then(decodePrompt),
+      update: (id, input, requestOptions) =>
+        request<unknown>(
+          paths.prompt(id),
+          mutation('PATCH', input),
+          requestOptions,
+        ).then(decodePrompt),
+      delete: (id, expectedRevision, requestOptions) =>
+        request<unknown>(
+          paths.prompt(id),
+          {
+            method: 'DELETE',
+            headers: { 'x-workshop-revision': String(expectedRevision) },
+          },
+          requestOptions,
+        ).then(() => undefined),
+      history: (id, requestOptions) =>
+        request<unknown>(paths.promptRevisions(id), {}, requestOptions).then(
+          decodePromptHistory,
+        ),
+    },
     tasks: {
       get(id: string, requestOptions?: RequestOptions) {
         return request<TaskRecord>(paths.task(id), {}, requestOptions);

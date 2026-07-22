@@ -32,11 +32,11 @@ import {
 } from './plugin-components.js';
 import type {
   EntityRevisionMetadata,
-  AnnotationRecord,
+  TaprootAnnotation,
   ContentRevisionMetadata,
   HostOperation,
-  PromptRecord,
-  ResourceRecord,
+  WorkshopPrompt,
+  TaprootResource,
   SearchHealth,
   WaystoneClient,
   WaystoneObservability,
@@ -421,7 +421,7 @@ export function ResourcePage({
   editable = false,
 }: {
   client: WaystoneClient;
-  resource: ResourceRecord;
+  resource: TaprootResource;
   revisions?: readonly ContentRevisionMetadata[];
   editable?: boolean;
 }) {
@@ -441,7 +441,7 @@ export function AnnotationPage({
   editable = false,
 }: {
   client: WaystoneClient;
-  annotation: AnnotationRecord;
+  annotation: TaprootAnnotation;
   revisions?: readonly ContentRevisionMetadata[];
   editable?: boolean;
 }) {
@@ -461,7 +461,7 @@ export function PromptPage({
   editable = false,
 }: {
   client: WaystoneClient;
-  prompt: PromptRecord;
+  prompt: WorkshopPrompt;
   revisions?: readonly ContentRevisionMetadata[];
   editable?: boolean;
 }) {

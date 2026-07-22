@@ -5,42 +5,50 @@ describe('knowledge browser client', () => {
   it('serializes the single seven-kind search with repeated kinds, kind-aware filters, bounds, and opaque cursor', async () => {
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(
-        Response.json({ results: [], readiness: 'lexical-only' }),
-      );
+      .mockResolvedValue(Response.json({ results: [] }));
     const client = createWaystoneClient({
       baseUrl: 'https://site.example/root/',
       fetch: fetcher,
     });
     await client.search.query({
-      query: 'orchid',
+      text: 'orchid',
       kinds: ['resource', 'annotation'],
       filters: {
-        language: 'fr',
-        mediaType: 'text/plain',
-        motivation: 'commenting',
+        languages: ['fr'],
+        sourceRevisions: ['r7'],
+        byKind: { resource: { mediaTypes: ['text/plain'] } },
       },
-      pageSize: 25,
+      limit: 25,
       cursor: 'opaque+/=',
     });
     const requested = fetcher.mock.calls[0]?.[0];
     if (typeof requested !== 'string')
       throw new TypeError('Expected a string URL.');
     const url = new URL(requested);
-    expect(url.pathname).toBe('/root/api/search');
-    expect(url.searchParams.getAll('kind')).toEqual(['resource', 'annotation']);
-    expect(url.searchParams.get('cursor')).toBe('opaque+/=');
-    expect(url.searchParams.get('pageSize')).toBe('25');
-    expect(url.searchParams.get('language')).toBe('fr');
-    expect(url.searchParams.has('mode')).toBe(false);
+    expect(url.pathname).toBe('/root/api/workshop/search');
+    expect(fetcher.mock.calls[0]?.[1]?.method).toBe('POST');
+    const body = fetcher.mock.calls[0]?.[1]?.body;
+    if (typeof body !== 'string')
+      throw new TypeError('Expected a JSON request body.');
+    expect(JSON.parse(body)).toEqual({
+      text: 'orchid',
+      kinds: ['resource', 'annotation'],
+      filters: {
+        languages: ['fr'],
+        sourceRevisions: ['r7'],
+        byKind: { resource: { mediaTypes: ['text/plain'] } },
+      },
+      limit: 25,
+      cursor: 'opaque+/=',
+    });
   });
 
   it.each([0, 101, 1.5])(
     'rejects an unbounded/invalid page size %s before transport',
-    (pageSize) => {
+    (limit) => {
       const fetcher = vi.fn<typeof fetch>();
       const client = createWaystoneClient({ fetch: fetcher });
-      expect(() => client.search.query({ query: 'x', pageSize })).toThrow(
+      expect(() => client.search.query({ text: 'x', limit })).toThrow(
         'Search page size must be between 1 and 100.',
       );
       expect(fetcher).not.toHaveBeenCalled();
@@ -48,33 +56,103 @@ describe('knowledge browser client', () => {
   );
 
   it('provides create/read/update/history operations with revision preconditions', async () => {
+    const visibility = { version: 1, clauses: [] } as const;
+    const attribution = { id: 'human-1', kind: 'human' } as const;
+    const authorization = {
+      installationId: 'i1',
+      workspaceId: null,
+      ownerPrincipalId: 'human-1',
+      policyRevision: 1,
+      visibility,
+    };
+    const resource = {
+      version: 1,
+      id: 'R1',
+      itemId: 'Q1',
+      revision: 1,
+      payload: { kind: 'inline-text', text: 'Body' },
+      mediaType: 'text/plain',
+      integrity: { algorithm: 'sha256', digest: 'abc', byteLength: 4 },
+      attribution,
+      authorization,
+      createdAt: '2026-01-01T00:00:00Z',
+      modifiedAt: '2026-01-01T00:00:00Z',
+      deletedAt: null,
+    };
+    const annotation = {
+      version: 1,
+      id: 'A1',
+      revision: 1,
+      body: { kind: 'text', text: 'Note' },
+      target: { kind: 'resource', sourceId: 'R1' },
+      attribution,
+      authorization,
+      createdAt: '2026-01-01T00:00:00Z',
+      modifiedAt: '2026-01-01T00:00:00Z',
+      deletedAt: null,
+    };
+    const prompt = {
+      id: 'P1',
+      name: 'p',
+      title: 'T',
+      promptText: 'X',
+      variables: {},
+      active: true,
+      priority: 0,
+      order: 0,
+      language: 'en',
+      attribution: {},
+      revision: 1,
+      policyRevision: 1,
+      installationId: 'i1',
+      ownerPrincipalId: 'human-1',
+      workspaceId: 'w1',
+      visibility,
+      authorizationRevision: 1,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(Response.json({ id: 'R1', revision: 1 }))
-      .mockResolvedValueOnce(Response.json({ id: 'R1', revision: 2 }))
-      .mockResolvedValueOnce(Response.json({ revisions: [] }))
+      .mockResolvedValueOnce(Response.json(resource))
+      .mockResolvedValueOnce(Response.json({ ...resource, revision: 2 }))
+      .mockResolvedValueOnce(Response.json(resource))
+      .mockResolvedValueOnce(Response.json(annotation))
       .mockResolvedValueOnce(
-        Response.json({ id: 'A1', revision: 1, targetId: 'R1' }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({ id: 'P1', revision: 1, title: 'T', text: 'X' }),
+        Response.json([
+          {
+            promptId: 'P1',
+            revision: 1,
+            prompt,
+            actorPrincipalId: 'human-1',
+            eventId: 'E1',
+            createdAt: '2026-01-01T00:00:00Z',
+          },
+        ]),
       );
     const client = createWaystoneClient({ fetch: fetcher });
-    await client.resources.create({ title: 'Source' });
+    await client.resources.create({
+      id: 'R1',
+      itemId: 'Q1',
+      title: 'Source',
+      payload: { kind: 'inline-text', text: 'Body' },
+      mediaType: 'text/plain',
+      integrity: { algorithm: 'sha256', digest: 'abc', byteLength: 4 },
+    });
     await client.resources.update(
       'R1',
       { title: 'Changed' },
       { expectedRevision: 1 },
     );
-    await client.resources.listRevisions('R1');
+    await client.resources.getRevision('R1', 1);
     await client.annotations.get('A1');
-    await client.prompts.getRevision('P1', 1);
+    await client.prompts.history('P1');
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
       '/api/resources',
       '/api/resources/R1',
-      '/api/resources/R1/revisions',
+      '/api/resources/R1/revisions/1',
       '/api/annotations/A1',
-      '/api/prompts/P1/revisions/1',
+      '/api/workshop/prompts/P1/history',
     ]);
     expect(
       new Headers(fetcher.mock.calls[1]?.[1]?.headers).get('if-match'),
@@ -90,7 +168,7 @@ describe('knowledge browser client', () => {
     };
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(Response.json({ estimateId: 'E1', items: 3 }))
+      .mockResolvedValueOnce(Response.json(health))
       .mockResolvedValueOnce(Response.json(health))
       .mockResolvedValueOnce(Response.json(health))
       .mockResolvedValueOnce(Response.json(health))
@@ -98,20 +176,30 @@ describe('knowledge browser client', () => {
         Response.json({ id: 'O1', kind: 'snapshot', state: 'pending' }),
       );
     const client = createWaystoneClient({ fetch: fetcher });
-    await client.search.admin.estimateBackfill();
-    await client.search.admin.approveBackfill('E1');
-    await client.search.admin.control('pause');
-    await client.search.admin.deleteEmbeddings('C1');
+    await client.search.admin.inspect();
+    await client.search.admin.execute({
+      operation: 'materialize',
+      maxJobs: 10,
+      maxRebuildRoots: 5,
+    });
+    await client.search.admin.execute({
+      operation: 'semantic-select',
+      configurationId: 'C1',
+    });
+    await client.search.admin.execute({
+      operation: 'semantic-delete-embeddings',
+      configurationId: 'C1',
+    });
     await client.hostOperations.start('snapshot');
     expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-      '/api/search/admin/estimate',
-      '/api/search/admin/approve',
-      '/api/search/admin/run',
-      '/api/search/admin/embeddings/delete',
+      '/api/workshop/search/admin',
+      '/api/workshop/search/admin',
+      '/api/workshop/search/admin',
+      '/api/workshop/search/admin',
       '/api/operations',
     ]);
     expect(fetcher.mock.calls.map(([, init]) => init?.method)).toEqual([
-      'POST',
+      undefined,
       'POST',
       'POST',
       'POST',
@@ -129,7 +217,12 @@ describe('knowledge browser client', () => {
         ),
       );
     const client = createWaystoneClient({ fetch: fetcher });
-    await expect(client.search.admin.control('play')).rejects.toMatchObject({
+    await expect(
+      client.search.admin.execute({
+        operation: 'semantic-run',
+        planId: 'P1',
+      }),
+    ).rejects.toMatchObject({
       kind: 'permission',
       status: 403,
       requestId: 'denied-1',

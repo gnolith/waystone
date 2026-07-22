@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { safeExternalUrl } from './formatting.js';
 import type {
-  AnnotationRecord,
+  TaprootAnnotation,
   ContentRevisionMetadata,
   ContentSelector,
   HostOperation,
-  PromptRecord,
-  ResourceRecord,
+  WorkshopPrompt,
+  TaprootResource,
   SearchHealth,
   UnifiedSearchPage,
   UnifiedSearchResult,
@@ -24,21 +24,22 @@ export function redactDiagnosticText(value: string): string {
 }
 
 export function canonicalSearchResultHref(result: UnifiedSearchResult): string {
+  const sourceId = result.canonicalId;
   switch (result.kind) {
     case 'statement':
-      return `/entities/${encodeURIComponent(result.itemId)}#statement-${encodeURIComponent(result.statementId)}`;
+      return `/entities/${encodeURIComponent(result.itemId ?? sourceId)}#statement-${encodeURIComponent(result.statementId ?? sourceId)}`;
     case 'item':
-      return `/entities/${encodeURIComponent(result.itemId)}`;
+      return `/entities/${encodeURIComponent(result.itemId ?? sourceId)}`;
     case 'task':
-      return `/tasks/${encodeURIComponent(result.taskId)}`;
+      return `/tasks/${encodeURIComponent(result.taskId ?? sourceId)}`;
     case 'memory':
-      return `/memories/${encodeURIComponent(result.memoryId)}`;
+      return `/memories/${encodeURIComponent(result.memoryId ?? sourceId)}`;
     case 'prompt':
-      return `/prompts/${encodeURIComponent(result.promptId)}`;
+      return `/prompts/${encodeURIComponent(result.promptId ?? sourceId)}`;
     case 'resource':
-      return `/resources/${encodeURIComponent(result.resourceId)}`;
+      return `/resources/${encodeURIComponent(result.resourceId ?? sourceId)}`;
     case 'annotation':
-      return `/annotations/${encodeURIComponent(result.annotationId)}`;
+      return `/annotations/${encodeURIComponent(result.annotationId ?? sourceId)}`;
   }
 }
 
@@ -207,10 +208,11 @@ export function ContentHistory({
   );
 }
 
-export function ResourceView({ resource }: { resource: ResourceRecord }) {
-  const externalLocation = resource.location
-    ? safeExternalUrl(resource.location)
-    : undefined;
+export function ResourceView({ resource }: { resource: TaprootResource }) {
+  const externalLocation =
+    resource.payload.kind === 'location'
+      ? safeExternalUrl(resource.payload.location)
+      : undefined;
   return (
     <article className="ws-content-view">
       <header>
@@ -224,7 +226,10 @@ export function ResourceView({ resource }: { resource: ResourceRecord }) {
         <Definition label="Revision">{resource.revision}</Definition>
         <Definition label="Language">{resource.language}</Definition>
         <Definition label="Media type">{resource.mediaType}</Definition>
-        <Definition label="Integrity">{resource.integrity}</Definition>
+        <Definition label="Integrity">
+          {resource.integrity.algorithm}:{resource.integrity.digest} (
+          {resource.integrity.byteLength} bytes)
+        </Definition>
         <Definition label="Location">
           {externalLocation ? (
             <a
@@ -232,43 +237,24 @@ export function ResourceView({ resource }: { resource: ResourceRecord }) {
               rel="noopener noreferrer"
               target="_blank"
             >
-              {resource.location}
+              {resource.payload.kind === 'location'
+                ? resource.payload.location
+                : undefined}
             </a>
-          ) : (
-            resource.location
-          )}
+          ) : resource.payload.kind === 'location' ? (
+            resource.payload.location
+          ) : undefined}
         </Definition>
         <Definition label="Linked Items">
-          {resource.linkedItemIds?.map((id, index) => (
-            <span key={id}>
-              {index ? ', ' : ''}
-              <a href={`/entities/${encodeURIComponent(id)}`}>Item {id}</a>
-            </span>
-          ))}
+          <a href={`/entities/${encodeURIComponent(resource.itemId)}`}>
+            Item {resource.itemId}
+          </a>
         </Definition>
       </dl>
-      {resource.selectedExcerpt && (
-        <section>
-          <h2>Selected excerpt</h2>
-          <blockquote>{resource.selectedExcerpt}</blockquote>
-        </section>
-      )}
-      {resource.body && (
+      {resource.payload.kind === 'inline-text' && (
         <section>
           <h2>Body</h2>
-          <pre className="ws-content-body">{resource.body}</pre>
-        </section>
-      )}
-      {resource.metadata && (
-        <section>
-          <h2>Metadata</h2>
-          <dl className="ws-metadata">
-            {Object.entries(resource.metadata).map(([key, value]) => (
-              <Definition key={key} label={key}>
-                {value}
-              </Definition>
-            ))}
-          </dl>
+          <pre className="ws-content-body">{resource.payload.text}</pre>
         </section>
       )}
     </article>
@@ -278,7 +264,7 @@ export function ResourceView({ resource }: { resource: ResourceRecord }) {
 export function AnnotationView({
   annotation,
 }: {
-  annotation: AnnotationRecord;
+  annotation: TaprootAnnotation;
 }) {
   return (
     <article className="ws-content-view">
@@ -289,43 +275,49 @@ export function AnnotationView({
       <dl className="ws-metadata">
         <Definition label="Revision">{annotation.revision}</Definition>
         <Definition label="Target">
-          <a href={`/resources/${encodeURIComponent(annotation.targetId)}`}>
-            Resource {annotation.targetId}
+          <a
+            href={`/${annotation.target.kind}s/${encodeURIComponent(annotation.target.sourceId)}`}
+          >
+            {annotation.target.kind} {annotation.target.sourceId}
           </a>
         </Definition>
         <Definition label="Selector">
           <SelectorDisplay
-            {...(annotation.selector ? { selector: annotation.selector } : {})}
+            {...(annotation.target.selector
+              ? { selector: annotation.target.selector }
+              : {})}
           />
         </Definition>
         <Definition label="Motivation">{annotation.motivation}</Definition>
-        <Definition label="Attribution">{annotation.attributedTo}</Definition>
+        <Definition label="Attribution">
+          {annotation.attribution.name ?? annotation.attribution.id}
+        </Definition>
         <Definition label="Language">{annotation.language}</Definition>
         <Definition label="Media type">{annotation.mediaType}</Definition>
-        <Definition label="Inherited visibility">
-          {annotation.inheritedVisibility}
+        <Definition label="Policy revision">
+          {annotation.authorization.policyRevision}
         </Definition>
         <Definition label="Body Resource">
-          {annotation.bodyResource && (
+          {annotation.body.kind === 'resource' && (
             <a
-              href={`/resources/${encodeURIComponent(annotation.bodyResource.resourceId)}`}
+              href={`/resources/${encodeURIComponent(annotation.body.resourceId)}`}
             >
-              Resource {annotation.bodyResource.resourceId}
+              Resource {annotation.body.resourceId}
             </a>
           )}
         </Definition>
       </dl>
-      {annotation.body && (
+      {annotation.body.kind === 'text' && (
         <section>
           <h2>Annotation body</h2>
-          <p>{annotation.body}</p>
+          <p>{annotation.body.text}</p>
         </section>
       )}
     </article>
   );
 }
 
-export function PromptView({ prompt }: { prompt: PromptRecord }) {
+export function PromptView({ prompt }: { prompt: WorkshopPrompt }) {
   return (
     <article className="ws-content-view">
       <header>
@@ -338,12 +330,12 @@ export function PromptView({ prompt }: { prompt: PromptRecord }) {
         <Definition label="Revision">{prompt.revision}</Definition>
         <Definition label="Language">{prompt.language}</Definition>
         <Definition label="Variables">
-          {prompt.variables?.join(', ')}
+          {Object.keys(prompt.variables).join(', ')}
         </Definition>
       </dl>
       <section>
         <h2>Prompt text</h2>
-        <pre className="ws-content-body">{prompt.text}</pre>
+        <pre className="ws-content-body">{prompt.promptText}</pre>
       </section>
     </article>
   );
