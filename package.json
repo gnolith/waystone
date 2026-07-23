@@ -1,7 +1,7 @@
 {
   "name": "@gnolith/waystone",
-  "version": "0.2.1",
-  "description": "The accessible human interface and extension surface for Gnolith research Sites.",
+  "version": "0.3.0",
+  "description": "Accessible browser UI and static view extensions for Workshop clients.",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -35,6 +35,12 @@
       "types": "./dist/fixtures.d.ts",
       "import": "./dist/fixtures.js"
     },
+    "./assets": {
+      "types": "./dist/asset-manifest.d.ts",
+      "import": "./dist/asset-manifest.js"
+    },
+    "./assets/manifest.json": "./dist/waystone-assets.json",
+    "./assets/waystone.css": "./dist/assets/waystone.css",
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"
   },
@@ -42,13 +48,14 @@
     "dist",
     "docs/accessibility.md",
     "docs/api-client.md",
-    "docs/codex-sites.md",
     "docs/components.md",
+    "docs/migration-0.3.md",
+    "docs/monorepo-handoff.md",
     "docs/plugins.md",
     "docs/search-content-operations.md",
     "docs/releasing.md",
     "docs/styling.md",
-    "docs/taproot-dependencies.md",
+    "docs/workshop-dependency.md",
     "docs/troubleshooting.md",
     "docs/upgrades.md",
     "README.md",
@@ -57,11 +64,11 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/build-css.mjs && node scripts/build-assets.mjs && node scripts/generate-sbom.mjs",
     "check": "npm run check:package && npm run consumer:check",
-    "check:package": "npm run format:check && npm run lint && npm run typecheck && npm run security:check && npm run test:coverage && npm run build && npm run verify:package && npm run boundary:check && npm run budgets",
+    "check:package": "npm run format:check && npm run lint && npm run typecheck && npm run security:check && npm run build && npm run test:coverage && npm run verify:package && npm run boundary:check && npm run budgets",
     "boundary:check": "node scripts/check-consumer-boundary.mjs",
-    "consumer:check": "node scripts/check-consumer.mjs && node scripts/check-declaration-consumer.mjs && node scripts/check-taproot-contract.mjs",
+    "consumer:check": "node scripts/check-consumer.mjs && node scripts/check-declaration-consumer.mjs && node scripts/check-workshop-contract.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint src test",
@@ -71,20 +78,18 @@
     "typecheck": "tsc --noEmit",
     "verify:package": "node scripts/verify-package.mjs",
     "budgets": "node scripts/check-budgets.mjs",
-    "security:check": "npm audit --audit-level=high && npm audit --omit=dev --audit-level=high && npm audit --package-lock-only --prefix examples/codex-site-canary --audit-level=high && npm audit --package-lock-only --prefix examples/codex-site-canary --omit=dev --audit-level=high",
+    "security:check": "npm audit --audit-level=high && npm audit --omit=dev --audit-level=high && npm audit --package-lock-only --prefix examples/browser-canary --audit-level=high && npm audit --package-lock-only --prefix examples/browser-canary --omit=dev --audit-level=high",
+    "sbom": "node scripts/generate-sbom.mjs",
+    "candidate:prepare": "node scripts/prepare-candidate.mjs",
     "prepack": "npm run check:package"
   },
   "peerDependencies": {
-    "@gnolith/taproot": ">=0.4.0 <0.5.0",
-    "@gnolith/workshop": ">=0.4.1 <0.5.0",
+    "@gnolith/workshop": ">=0.5.0 <0.6.0",
     "@types/react": ">=19 <20",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"
   },
   "peerDependenciesMeta": {
-    "@gnolith/taproot": {
-      "optional": true
-    },
     "@gnolith/workshop": {
       "optional": true
     }
@@ -120,10 +125,10 @@
   "keywords": [
     "gnolith",
     "research",
-    "wikibase",
+    "browser-ui",
     "sparql",
     "react",
-    "codex-sites"
+    "workshop"
   ],
   "license": "MIT"
 }

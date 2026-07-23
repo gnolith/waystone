@@ -308,19 +308,37 @@ export function EntityDescription({
 export function EntityLink({
   id,
   label,
-  basePath,
+  href,
+  onOpen,
 }: {
   id: string;
   label?: string;
-  basePath?: string;
+  href?: string;
+  onOpen?: (id: string) => void;
 }) {
-  const root = basePath ?? (id.startsWith('P') ? '/properties' : '/entities');
-  return (
-    <a className="ws-entity-link" href={`${root}/${encodeURIComponent(id)}`}>
+  const content = (
+    <>
       <span>{label ?? id}</span>
       {label && <span className="ws-id">{id}</span>}
-    </a>
+    </>
   );
+  if (onOpen)
+    return (
+      <button
+        className="ws-entity-link"
+        type="button"
+        onClick={() => onOpen(id)}
+      >
+        {content}
+      </button>
+    );
+  if (href)
+    return (
+      <a className="ws-entity-link" href={href}>
+        {content}
+      </a>
+    );
+  return <span className="ws-entity-link">{content}</span>;
 }
 export function AliasList({
   aliases,
@@ -641,10 +659,12 @@ export function EntitySearchResults({
   results,
   activeIndex,
   next,
+  onSelect,
 }: {
   results: readonly EntitySearchHit[];
   activeIndex?: number;
   next?: ReactNode;
+  onSelect?: (result: EntitySearchHit) => void;
 }) {
   return (
     <div>
@@ -662,6 +682,7 @@ export function EntitySearchResults({
             <EntityLink
               id={result.id}
               {...(result.label ? { label: result.label } : {})}
+              {...(onSelect ? { onOpen: () => onSelect(result) } : {})}
             />
             <span className="ws-type">{result.type}</span>
             {result.description && <p>{result.description}</p>}

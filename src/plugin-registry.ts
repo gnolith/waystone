@@ -2,179 +2,118 @@ import type {
   RegisteredContribution,
   WaystoneDashboardContribution,
   WaystoneEntityPanelContribution,
-  WaystoneNavigationContribution,
-  WaystoneOnboardingContribution,
   WaystonePlugin,
-  WaystonePluginInput,
+  WaystonePluginCapability,
   WaystoneRegistry,
-  WaystoneRouteDescriptor,
+  WaystoneResultContribution,
   WaystoneSettingsContribution,
 } from './plugin-contracts.js';
-import { createElement, type ComponentType } from 'react';
 
-function contextualComponent<T>(
-  component: ComponentType<Record<string, never>>,
-): ComponentType<T> {
-  return component as unknown as ComponentType<T>;
-}
-
-function isWorkshopShape(
-  plugin: WaystonePluginInput,
-): plugin is import('./plugin-contracts.js').WorkshopCompatibleWaystonePlugin {
-  return 'name' in plugin;
-}
-
-function workshopEntityPanelComponent(
-  component: ComponentType<Record<string, never>>,
-): ComponentType<
-  import('./plugin-contracts.js').WaystonePluginContext & {
-    entity: import('./model.js').WikibaseEntity;
-  }
-> {
-  const WorkshopEntityPanel = component as unknown as ComponentType<
-    import('./plugin-contracts.js').WaystonePluginContext & {
-      entityId?: string;
-    }
-  >;
-  return function WorkshopEntityPanelAdapter({ entity, ...context }) {
-    return createElement(WorkshopEntityPanel, {
-      ...context,
-      entityId: entity.id,
-    });
-  };
-}
-
-function normalizePlugin(plugin: WaystonePluginInput): WaystonePlugin {
-  if (!isWorkshopShape(plugin)) return plugin;
-  return {
-    id: plugin.id,
-    label: plugin.name,
-    ...(plugin.version ? { version: plugin.version } : {}),
-    ...(plugin.navigation ? { navigation: plugin.navigation } : {}),
-    ...(plugin.dashboardPanels
-      ? {
-          dashboardPanels: plugin.dashboardPanels.map((item) => ({
-            id: item.id,
-            label: item.title,
-            component: contextualComponent<
-              import('./plugin-contracts.js').WaystonePluginContext
-            >(item.component),
-          })),
-        }
-      : {}),
-    ...(plugin.entityPanels
-      ? {
-          entityPanels: plugin.entityPanels.map((item) => ({
-            id: item.id,
-            label: item.title,
-            component: workshopEntityPanelComponent(item.component),
-          })),
-        }
-      : {}),
-    ...(plugin.onboarding
-      ? {
-          onboardingSteps: plugin.onboarding.map((item) => ({
-            id: item.id,
-            label: item.title,
-            component: contextualComponent<
-              import('./plugin-contracts.js').WaystonePluginContext & {
-                onComplete?: () => void;
-              }
-            >(item.component),
-          })),
-        }
-      : {}),
-    ...(plugin.settingsPanels
-      ? {
-          settingsPanels: plugin.settingsPanels.map((item) => ({
-            id: item.id,
-            label: item.title,
-            component: contextualComponent<
-              import('./plugin-contracts.js').WaystonePluginContext
-            >(item.component),
-          })),
-        }
-      : {}),
-    ...(plugin.routes
-      ? {
-          routeDescriptors: plugin.routes.map((item) => ({
-            id: `${item.id}-route`,
-            label: item.id,
-            path: item.path,
-            exportName: item.component.name || item.id,
-            requiresClient: true,
-          })),
-        }
-      : {}),
-  };
-}
+const PLUGIN_KEYS = new Set([
+  'id',
+  'label',
+  'version',
+  'capabilities',
+  'dashboardPanels',
+  'entityPanels',
+  'resultPanels',
+  'settingsPanels',
+]);
+const CONTRIBUTION_KEYS = new Set([
+  'id',
+  'label',
+  'order',
+  'component',
+  'supports',
+]);
+const CAPABILITIES = new Set<WaystonePluginCapability>([
+  'dashboard:view',
+  'entity:view',
+  'result:view',
+  'settings:view',
+]);
 
 function assertId(value: string, kind: string): void {
   if (!/^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$/.test(value))
-    throw new TypeError(
-      `${kind} ID "${value}" must be lowercase and may contain digits, dots, and hyphens.`,
-    );
+    throw new TypeError(`${kind} ID "${value}" is invalid.`);
 }
+
+function assertExactKeys(
+  value: Readonly<Record<string, unknown>>,
+  allowed: ReadonlySet<string>,
+  kind: string,
+) {
+  for (const key of Object.keys(value))
+    if (!allowed.has(key))
+      throw new TypeError(
+        `${kind} key "${key}" is not allowed. Plugins cannot register routes, tools, auth, fetch interception, or server operations.`,
+      );
+}
+
 function collect<T extends { id: string; order?: number }>(
   plugins: readonly WaystonePlugin[],
-  key: keyof WaystonePlugin,
+  key: 'dashboardPanels' | 'entityPanels' | 'resultPanels' | 'settingsPanels',
 ): readonly RegisteredContribution<T>[] {
   const entries: RegisteredContribution<T>[] = [];
-  for (const plugin of plugins) {
-    const contributions = (plugin[key] ?? []) as unknown as readonly T[];
-    for (const contribution of contributions) {
+  for (const plugin of plugins)
+    for (const contribution of plugin[key] ?? []) {
+      assertExactKeys(
+        contribution as unknown as Readonly<Record<string, unknown>>,
+        CONTRIBUTION_KEYS,
+        'Contribution',
+      );
       assertId(contribution.id, 'Contribution');
-      entries.push({ pluginId: plugin.id, contribution });
+      entries.push({
+        pluginId: plugin.id,
+        contribution: Object.freeze({ ...contribution }) as unknown as T,
+      });
     }
-  }
   return Object.freeze(
     entries.sort(
-      (a, b) =>
-        (a.contribution.order ?? 0) - (b.contribution.order ?? 0) ||
-        a.pluginId.localeCompare(b.pluginId) ||
-        a.contribution.id.localeCompare(b.contribution.id),
+      (left, right) =>
+        (left.contribution.order ?? 0) - (right.contribution.order ?? 0) ||
+        left.pluginId.localeCompare(right.pluginId) ||
+        left.contribution.id.localeCompare(right.contribution.id),
     ),
   );
 }
+
 export function createWaystoneRegistry(
-  definitions: readonly WaystonePluginInput[] = [],
+  definitions: readonly WaystonePlugin[] = [],
 ): WaystoneRegistry {
-  const plugins = definitions.map(normalizePlugin);
-  const seen = new Set<string>();
-  const contributionIds = new Set<string>();
-  const contributionKeys = [
-    'navigation',
-    'dashboardPanels',
-    'entityPanels',
-    'onboardingSteps',
-    'settingsPanels',
-    'routeDescriptors',
-  ] as const;
-  for (const plugin of plugins) {
-    assertId(plugin.id, 'Plugin');
-    if (seen.has(plugin.id))
-      throw new TypeError(`Duplicate plugin ID "${plugin.id}".`);
-    seen.add(plugin.id);
-    for (const key of contributionKeys) {
-      for (const contribution of plugin[key] ?? []) {
+  const seenPlugins = new Set<string>();
+  const seenContributions = new Set<string>();
+  const plugins = definitions.map((definition) => {
+    assertExactKeys(
+      definition as unknown as Readonly<Record<string, unknown>>,
+      PLUGIN_KEYS,
+      'Plugin',
+    );
+    assertId(definition.id, 'Plugin');
+    if (seenPlugins.has(definition.id))
+      throw new TypeError(`Duplicate plugin ID "${definition.id}".`);
+    seenPlugins.add(definition.id);
+    for (const capability of definition.capabilities)
+      if (!CAPABILITIES.has(capability))
+        throw new TypeError(`Unsupported plugin capability "${capability}".`);
+    for (const key of [
+      'dashboardPanels',
+      'entityPanels',
+      'resultPanels',
+      'settingsPanels',
+    ] as const)
+      for (const contribution of definition[key] ?? []) {
         assertId(contribution.id, 'Contribution');
-        if (contributionIds.has(contribution.id))
+        if (seenContributions.has(contribution.id))
           throw new TypeError(
             `Duplicate contribution ID "${contribution.id}".`,
           );
-        contributionIds.add(contribution.id);
+        seenContributions.add(contribution.id);
       }
-    }
-    for (const descriptor of plugin.routeDescriptors ?? []) {
-      if (!descriptor.path.startsWith('/'))
-        throw new TypeError(
-          `Route descriptor "${plugin.id}:${descriptor.id}" must use an absolute Site path.`,
-        );
-    }
-  }
+    return Object.freeze({ ...definition });
+  });
   return Object.freeze({
-    plugins: Object.freeze([...plugins]),
-    navigation: collect<WaystoneNavigationContribution>(plugins, 'navigation'),
+    plugins: Object.freeze(plugins),
     dashboardPanels: collect<WaystoneDashboardContribution>(
       plugins,
       'dashboardPanels',
@@ -183,18 +122,12 @@ export function createWaystoneRegistry(
       plugins,
       'entityPanels',
     ),
-    onboardingSteps: collect<WaystoneOnboardingContribution>(
-      plugins,
-      'onboardingSteps',
-    ),
+    resultPanels: collect<WaystoneResultContribution>(plugins, 'resultPanels'),
     settingsPanels: collect<WaystoneSettingsContribution>(
       plugins,
       'settingsPanels',
     ),
-    routeDescriptors: collect<WaystoneRouteDescriptor>(
-      plugins,
-      'routeDescriptors',
-    ),
   });
 }
+
 export const registerWaystonePlugins = createWaystoneRegistry;

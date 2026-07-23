@@ -4,6 +4,23 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-23
+
+### Changed
+
+- Reset Waystone to a browser-only UI consumer of Workshop named operations.
+- Replaced route, transport, authentication, server-error, and canonical DTO ownership with the structural `client.call(name, input, { signal })` boundary.
+- Added complete accessible search, knowledge-content, Task lifecycle, readiness, SPARQL, and search-administration UI with explicit degraded and conflict states.
+- Replaced executable plugins with validated static UI declarations.
+
+### Added
+
+- Added deterministic immutable CSS assets, a JCS-digested `waystone-assets-v1` manifest, CycloneDX SBOM, packed browser/declaration consumers, and candidate checksums.
+
+### Removed
+
+- Removed HTTP client construction, path maps, auth/token handling, protocol adapters, host operations, installation/onboarding, snapshot/restore, server, and deployment ownership.
+
 ## [0.2.1] - 2026-07-22
 
 - Corrected the browser protocol boundary to exact public Taproot 0.4.0 and Workshop 0.4.1 artifacts: structured POST search, string source revisions, generic match/cursor preservation, typed references and hydration, canonical Resource/Annotation CRUD, complete Prompt CRUD/history metadata, and exact search-administration operations.
@@ -68,7 +85,8 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 
 - First production-candidate public contract.
 
-[Unreleased]: https://github.com/gnolith/waystone/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/gnolith/waystone/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/gnolith/waystone/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/gnolith/waystone/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/gnolith/waystone/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/gnolith/waystone/compare/v0.1.1...v0.1.2

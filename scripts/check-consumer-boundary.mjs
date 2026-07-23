@@ -1,82 +1,50 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
-const fixtureRoot = path.resolve('examples/codex-site-canary');
+const root = path.resolve('examples/browser-canary');
 const manifest = JSON.parse(
-  readFileSync(path.join(fixtureRoot, 'package.json'), 'utf8'),
-);
-const lock = JSON.parse(
-  readFileSync(path.join(fixtureRoot, 'package-lock.json'), 'utf8'),
+  readFileSync(path.join(root, 'package.json'), 'utf8'),
 );
 const errors = [];
-
-const dependencyNames = Object.keys({
+const dependencies = {
   ...manifest.dependencies,
   ...manifest.devDependencies,
-});
-for (const name of dependencyNames) {
-  if (name.startsWith('@gnolith/') && name !== '@gnolith/waystone') {
-    errors.push(
-      `Isolated consumer must not depend on sibling package ${name}.`,
-    );
+};
+
+for (const name of Object.keys(dependencies)) {
+  if (name.startsWith('@gnolith/') && name !== '@gnolith/waystone')
+    errors.push(`Browser canary must not install sibling package ${name}.`);
+}
+
+function walk(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(directory, entry.name);
+    if (entry.name === 'node_modules') return [];
+    return entry.isDirectory() ? walk(file) : [file];
+  });
+}
+
+const forbidden =
+  /(?:cloudflare|codex.?sites?|mcp|taproot|diamond|next\/server|app\/api|authorization\s*:|localStorage|sessionStorage)/i;
+for (const file of walk(root)) {
+  if (/\.(?:ts|tsx|js|mjs|json|md)$/.test(file)) {
+    const match = readFileSync(file, 'utf8').match(forbidden);
+    if (match)
+      errors.push(
+        `Forbidden consumer boundary term "${match[0]}" in ${path.relative('.', file)}.`,
+      );
   }
 }
 
-for (const name of [
-  '@gnolith/diamond',
-  '@gnolith/taproot',
-  '@gnolith/workshop',
-]) {
-  if (lock.packages?.[`node_modules/${name}`]) {
-    errors.push(`Isolated consumer lockfile installs sibling package ${name}.`);
-  }
-}
-
-for (const relative of [
-  '.openai/hosting.json',
-  'build/sites-vite-plugin.ts',
-  'cloudflare-env.d.ts',
-  'drizzle.config.ts',
-  'worker/index.ts',
-  'app/api/_taproot.ts',
-  'app/api/_sparql.ts',
-]) {
-  if (existsSync(path.join(fixtureRoot, relative))) {
-    errors.push(`Site-owned fixture file must not be present: ${relative}.`);
-  }
-}
-
-const consumerCheck = readFileSync('scripts/check-consumer.mjs', 'utf8');
-if (!consumerCheck.includes("name !== 'vendor'")) {
-  errors.push(
-    'The isolated consumer copy must exclude the legacy vendor directory.',
-  );
-}
-
-const trackedVendorArchive = spawnSync(
-  'git',
-  [
-    'ls-files',
-    '--error-unmatch',
-    'examples/codex-site-canary/vendor/gnolith-workshop-0.1.0.tgz',
-  ],
-  { stdio: 'ignore' },
-);
-if (trackedVendorArchive.status === 0) {
-  errors.push('The legacy Workshop vendor archive must not be tracked.');
-}
-if (trackedVendorArchive.error) {
-  errors.push(
-    `Could not verify tracked vendor files: ${trackedVendorArchive.error.message}`,
-  );
+for (const relative of ['app', 'worker', '.openai', 'wrangler.toml']) {
+  if (existsSync(path.join(root, relative)))
+    errors.push(`Browser canary must not contain ${relative}.`);
 }
 
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-
 console.log(
-  'Isolated consumer has no sibling-package assembly or Site-owned hosting files.',
+  'Browser canary is isolated from servers, hosting, auth, and sibling packages.',
 );
