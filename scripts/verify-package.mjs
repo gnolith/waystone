@@ -2,38 +2,41 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+
 const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
 const errors = [];
-const changelog = readFileSync('CHANGELOG.md', 'utf8');
-if (manifest.private) errors.push('Package must not be private.');
-if (manifest.publishConfig?.access !== 'public')
-  errors.push('Scoped package must publish with public access.');
-if (manifest.publishConfig?.provenance !== true)
-  errors.push('npm provenance must be enabled.');
-if (!changelog.includes(`## [${manifest.version}]`))
-  errors.push(`CHANGELOG.md is missing version ${manifest.version}.`);
-if (manifest.dependencies?.react || manifest.dependencies?.['react-dom'])
-  errors.push('React must remain a peer, not a runtime dependency.');
-if (manifest.peerDependencies?.['@types/react'] !== '>=19 <20')
-  errors.push('@types/react must be a required React 19 peer.');
-if (manifest.devDependencies?.['@types/react'] !== '19.2.14')
-  errors.push('@types/react development verification must stay exact.');
 const entryFiles = [];
+const forbiddenSource =
+  /(?:\bfetch\s*\(|\/api\/|cloudflare:|@gnolith\/(?:taproot|diamond)|\bMCP\b|HostOperation|localStorage|sessionStorage)/;
+
+if (manifest.version !== '0.3.0')
+  errors.push('Architecture reset must be version 0.3.0.');
+if (manifest.dependencies && Object.keys(manifest.dependencies).length)
+  errors.push('Waystone must have no runtime dependencies.');
+if (manifest.peerDependencies?.['@gnolith/workshop'] !== '0.5.0')
+  errors.push('Workshop peer must bind the exact reset protocol release.');
+
 for (const [name, target] of Object.entries(manifest.exports)) {
-  const values = typeof target === 'string' ? [target] : Object.values(target);
-  for (const value of values) {
+  for (const value of typeof target === 'string'
+    ? [target]
+    : Object.values(target)) {
     const file = value.replace(/^\.\//, '');
     if (!existsSync(file))
-      errors.push(`Export ${name} points to missing ${file}`);
+      errors.push(`Export ${name} points to missing ${file}.`);
     if (file.endsWith('.js')) entryFiles.push(file);
   }
 }
+
 const importPattern = /(?:from\s*|import\s*)["']([^"']+)["']/g;
 function graph(entry, seen = new Set()) {
   const file = path.resolve(entry);
   if (seen.has(file) || !existsSync(file)) return seen;
   seen.add(file);
   const source = readFileSync(file, 'utf8');
+  if (forbiddenSource.test(source))
+    errors.push(
+      `Forbidden browser/package boundary in ${path.relative('.', file)}.`,
+    );
   for (const match of source.matchAll(importPattern)) {
     const specifier = match[1];
     if (!specifier) continue;
@@ -43,25 +46,31 @@ function graph(entry, seen = new Set()) {
       builtinModules.includes(specifier)
     )
       errors.push(
-        `Forbidden runtime import ${specifier} in ${path.relative('.', file)}`,
+        `Forbidden runtime import ${specifier} in ${path.relative('.', file)}.`,
       );
-    else if (specifier.startsWith('.'))
+    if (specifier.startsWith('.'))
       graph(path.resolve(path.dirname(file), specifier), seen);
   }
   return seen;
 }
 for (const entry of entryFiles) graph(entry);
 for (const file of graph('dist/index.js')) {
-  const source = readFileSync(file, 'utf8');
-  if (/^["']use client["'];/m.test(source))
+  if (/^["']use client["'];/m.test(readFileSync(file, 'utf8')))
     errors.push(
-      `Server-safe root reaches client module ${path.relative('.', file)}`,
+      `Server-safe root reaches client module ${path.relative('.', file)}.`,
     );
 }
-for (const entry of entryFiles) {
-  if (!existsSync(entry.replace(/\.js$/, '.d.ts')))
-    errors.push(`Missing declaration for ${entry}`);
+for (const file of graph('dist/fixtures.js')) {
+  if (path.basename(file).includes('workshop-client'))
+    errors.push('Production fixtures must not contain a Workshop client.');
 }
+
+const assets = JSON.parse(readFileSync('dist/waystone-assets.json', 'utf8'));
+if (assets.format !== 'waystone-assets-v1' || !assets.manifestSha256)
+  errors.push('Immutable asset manifest is invalid.');
+if (!existsSync('dist/waystone.cdx.json'))
+  errors.push('CycloneDX SBOM is missing.');
+
 const packed = spawnSync(
   process.execPath,
   [process.env.npm_execpath, 'pack', '--dry-run', '--json', '--ignore-scripts'],
@@ -70,51 +79,39 @@ const packed = spawnSync(
 if (packed.status !== 0)
   errors.push(`npm pack dry run failed: ${packed.stderr}`);
 else {
-  const output = JSON.parse(packed.stdout);
-  const files = output[0]?.files?.map((item) => item.path) ?? [];
-  const requiredPackageDocs = [
-    'docs/accessibility.md',
-    'docs/api-client.md',
-    'docs/codex-sites.md',
-    'docs/components.md',
-    'docs/plugins.md',
-    'docs/search-content-operations.md',
-    'docs/releasing.md',
-    'docs/styling.md',
-    'docs/taproot-dependencies.md',
-    'docs/troubleshooting.md',
-    'docs/upgrades.md',
-  ];
-  for (const file of requiredPackageDocs)
-    if (!files.includes(file)) errors.push(`Tarball is missing ${file}`);
-  if (files.includes('docs/release-evidence.md'))
-    errors.push(
-      'Repository-only release evidence must not ship in the tarball.',
-    );
-  for (const file of files)
-    if (!(
-      file.startsWith('dist/') ||
-      file.startsWith('docs/') ||
-      [
+  const files =
+    JSON.parse(packed.stdout)[0]?.files?.map((item) => item.path) ?? [];
+  for (const required of [
+    'dist/waystone-assets.json',
+    'dist/assets/waystone.css',
+    'dist/waystone.cdx.json',
+    'docs/migration-0.3.md',
+    'docs/monorepo-handoff.md',
+  ])
+    if (!files.includes(required))
+      errors.push(`Tarball is missing ${required}.`);
+  for (const file of files) {
+    if (
+      !file.startsWith('dist/') &&
+      !file.startsWith('docs/') &&
+      ![
         'package.json',
         'README.md',
         'LICENSE',
         'SECURITY.md',
         'CHANGELOG.md',
       ].includes(file)
-    ))
-      errors.push(`Unexpected tarball file ${file}`);
+    )
+      errors.push(`Unexpected tarball file ${file}.`);
+  }
 }
-if (
-  readdirSync('dist').some(
-    (name) => name === 'node_modules' || name === 'react.js',
-  )
-)
-  errors.push('React or node_modules was bundled into dist.');
+if (readdirSync('dist').includes('node_modules'))
+  errors.push('dist must not contain node_modules.');
+
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
 console.log(
-  'Package exports, declarations, runtime graphs, externals, and tarball contents verified.',
+  'Exports, runtime graphs, assets, SBOM, and tarball boundaries verified.',
 );

@@ -1,63 +1,41 @@
-export type WaystoneErrorKind =
-  | 'validation'
-  | 'conflict'
-  | 'permission'
-  | 'not-found'
-  | 'network'
-  | 'server'
-  | 'plugin'
-  | 'unsupported';
+import type { WorkshopRequestErrorLike } from './model.js';
 
-export class WaystoneRequestError extends Error {
-  readonly kind: WaystoneErrorKind;
-  readonly status?: number;
-  readonly requestId?: string;
-  readonly issues?: readonly unknown[];
+const SECRET_PATTERN =
+  /(?:authorization|bearer|token|api[_-]?key|password|cookie|secret)\s*[:=]?\s*[^\s,;]+/gi;
 
-  constructor(
-    message: string,
-    options: {
-      kind: WaystoneErrorKind;
-      status?: number;
-      requestId?: string;
-      issues?: readonly unknown[];
-      cause?: unknown;
-    },
-  ) {
-    super(message, { cause: options.cause });
-    this.name = 'WaystoneRequestError';
-    this.kind = options.kind;
-    if (options.status !== undefined) this.status = options.status;
-    if (options.requestId !== undefined) this.requestId = options.requestId;
-    if (options.issues !== undefined) this.issues = options.issues;
-  }
-}
-
-export function errorKindForStatus(status: number): WaystoneErrorKind {
-  if (status === 400 || status === 422) return 'validation';
-  if (status === 401 || status === 403) return 'permission';
-  if (status === 404) return 'not-found';
-  if (status === 409 || status === 412) return 'conflict';
-  return 'server';
+export function redactPublicText(value: string, limit = 240): string {
+  const redacted = value.replace(SECRET_PATTERN, '[redacted]');
+  return redacted.length <= limit ? redacted : `${redacted.slice(0, limit)}…`;
 }
 
 export function publicErrorMessage(error: unknown): string {
-  if (!(error instanceof WaystoneRequestError))
-    return 'Something went wrong. Please try again.';
-  switch (error.kind) {
-    case 'validation':
-      return error.message || 'Some information needs attention.';
+  if (!isWorkshopRequestErrorLike(error))
+    return 'The request could not be completed. Try again.';
+  switch (error.code) {
+    case 'bad_request':
+    case 'validation_failed':
+      return redactPublicText(error.message);
+    case 'unauthenticated':
+      return 'Sign in again to continue.';
+    case 'forbidden':
+      return 'You do not have permission to complete this request.';
     case 'conflict':
-      return 'This entity changed since you opened it. Review the latest revision before saving again.';
-    case 'permission':
-      return 'You do not have permission to complete this action.';
-    case 'not-found':
-      return 'The requested resource could not be found.';
-    case 'network':
-      return 'The Site could not be reached. Check your connection and try again.';
-    case 'unsupported':
-      return error.message || 'This value type is not supported.';
+      return 'This information changed. Refresh it before trying again.';
+    case 'dependency_unavailable':
+      return 'A required service is temporarily unavailable. Retry shortly.';
+    case 'cancelled':
+      return 'The request was cancelled.';
     default:
-      return 'The Site could not complete the request. Try again or contact a Site administrator.';
+      return 'The request could not be completed. Try again.';
   }
+}
+
+function isWorkshopRequestErrorLike(
+  value: unknown,
+): value is WorkshopRequestErrorLike {
+  return (
+    value instanceof Error &&
+    'code' in value &&
+    typeof (value as { code?: unknown }).code === 'string'
+  );
 }

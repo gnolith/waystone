@@ -1,122 +1,110 @@
 import type { ReactNode } from 'react';
-import { safeExternalUrl } from './formatting.js';
+import { EmptyState, PermissionDenied } from './components.js';
+import { redactPublicText } from './errors.js';
 import type {
-  TaprootAnnotation,
+  AnnotationViewModel,
   ContentRevisionMetadata,
-  ContentSelector,
-  HostOperation,
-  WorkshopPrompt,
-  TaprootResource,
-  SearchHealth,
-  UnifiedSearchPage,
-  UnifiedSearchResult,
+  ContentSelectorView,
+  MemoryViewModel,
+  PromptViewModel,
+  ReadinessView,
+  ResourcePreviewView,
+  RevisionView,
+  SearchAdministrationView,
+  SearchPageView,
+  SearchResultView,
+  TaskPacketView,
+  TaskViewModel,
 } from './model.js';
 
-const MAX_SNIPPET = 600;
+const MAX_TEXT_PREVIEW_BYTES = 64 * 1024;
+const SAFE_TEXT_MEDIA_TYPES = new Set([
+  'text/plain',
+  'text/markdown',
+  'application/json',
+  'application/ld+json',
+]);
 
 export function redactDiagnosticText(value: string): string {
-  return value
-    .replace(
-      /\b(authorization|api[-_ ]?key|access[-_ ]?token|password|secret)\b\s*[:=]\s*[^\s,;]+/gi,
-      '$1=[redacted]',
-    )
-    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+/gi, 'Bearer [redacted]');
+  return redactPublicText(value);
 }
 
-export function canonicalSearchResultHref(result: UnifiedSearchResult): string {
-  const sourceId = result.canonicalId;
-  switch (result.kind) {
-    case 'statement':
-      return `/entities/${encodeURIComponent(result.itemId ?? sourceId)}#statement-${encodeURIComponent(result.statementId ?? sourceId)}`;
-    case 'item':
-      return `/entities/${encodeURIComponent(result.itemId ?? sourceId)}`;
-    case 'task':
-      return `/tasks/${encodeURIComponent(result.taskId ?? sourceId)}`;
-    case 'memory':
-      return `/memories/${encodeURIComponent(result.memoryId ?? sourceId)}`;
-    case 'prompt':
-      return `/prompts/${encodeURIComponent(result.promptId ?? sourceId)}`;
-    case 'resource':
-      return `/resources/${encodeURIComponent(result.resourceId ?? sourceId)}`;
-    case 'annotation':
-      return `/annotations/${encodeURIComponent(result.annotationId ?? sourceId)}`;
+export function ExternalDestination({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return <span>External destination blocked</span>;
   }
+  const safe = url.protocol === 'https:' || url.protocol === 'http:';
+  if (!safe) return <span>External destination blocked</span>;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer external">
+      {children} <span className="ws-visually-hidden">(opens externally)</span>
+    </a>
+  );
 }
 
-function selectorText(selector: ContentSelector): string {
-  if (selector.type === 'text-quote' && 'exact' in selector)
-    return `Text quote: ${selector.exact}`;
-  if (selector.type === 'text-position' && 'start' in selector)
-    return `Text positions ${selector.start}–${selector.end}`;
-  if ('value' in selector && selector.value)
-    return `${selector.type}: ${selector.value}`;
-  return selector.type;
-}
-
-export function SelectorDisplay({ selector }: { selector?: ContentSelector }) {
-  return selector ? <span>{selectorText(selector)}</span> : <span>None</span>;
-}
-
-function resultTitle(result: UnifiedSearchResult): string {
-  if ('title' in result && result.title) return result.title;
-  if (result.kind === 'item' && result.label) return result.label;
-  return result.canonicalId;
+export function SelectorDisplay({
+  selector,
+}: {
+  selector?: ContentSelectorView;
+}) {
+  if (!selector) return null;
+  if (selector.type === 'fragment') return <code>#{selector.value}</code>;
+  if (selector.type === 'text-position')
+    return (
+      <span>
+        characters {selector.start}–{selector.end}
+      </span>
+    );
+  return <q>{selector.exact}</q>;
 }
 
 export function UnifiedSearchResultCard({
   result,
-  onNavigate,
+  onOpen,
 }: {
-  result: UnifiedSearchResult;
-  onNavigate?: (result: UnifiedSearchResult, href: string) => void;
+  result: SearchResultView;
+  onOpen?: (result: SearchResultView) => void;
 }) {
-  const href = canonicalSearchResultHref(result);
-  const snippet = result.snippet?.slice(0, MAX_SNIPPET);
   return (
-    <article className="ws-search-card" data-search-kind={result.kind}>
+    <article className="ws-search-result">
       <header>
-        <span className="ws-rank">{result.kind}</span>{' '}
-        <a
-          href={href}
-          onClick={() => onNavigate?.(result, href)}
-          data-canonical-id={result.canonicalId}
-        >
-          {resultTitle(result)}
-        </a>
+        <span className="ws-kind">{result.kind}</span>
+        {result.kind === 'item' ? (
+          <span className="ws-kind">
+            {result.entityType === 'property' ? 'Property' : 'Item'}
+          </span>
+        ) : null}
+        <code>{result.sourceId}</code>
+        <span>ordering signal {result.score.toFixed(3)}</span>
       </header>
-      <dl className="ws-result-meta">
-        <div>
-          <dt>Identity</dt>
-          <dd>{result.canonicalId}</dd>
-        </div>
-        <div>
-          <dt>Revision</dt>
-          <dd>{result.revision}</dd>
-        </div>
-        <div>
-          <dt>Ordering score</dt>
-          <dd>{result.score}</dd>
-        </div>
-        {result.language && (
-          <div>
-            <dt>Language</dt>
-            <dd>{result.language}</dd>
-          </div>
-        )}
-        {'selector' in result && result.selector && (
-          <div>
-            <dt>Selector</dt>
-            <dd>
-              <SelectorDisplay selector={result.selector} />
-            </dd>
-          </div>
-        )}
-      </dl>
-      {snippet && <p className="ws-search-card__snippet">{snippet}</p>}
+      {result.title ? <h3>{result.title}</h3> : null}
+      <p>{result.snippet}</p>
+      {result.matchLabel ? <p>Matched {result.matchLabel}</p> : null}
       {result.contributingStatementIds?.length ? (
-        <p className="ws-hint">
-          Contributing statements: {result.contributingStatementIds.join(', ')}
-        </p>
+        <details>
+          <summary>Traceability</summary>
+          <ul>
+            {result.contributingStatementIds.map((id) => (
+              <li key={id}>
+                <code>{id}</code>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {onOpen ? (
+        <button type="button" onClick={() => onOpen(result)}>
+          Open authorized result
+        </button>
       ) : null}
     </article>
   );
@@ -124,59 +112,51 @@ export function UnifiedSearchResultCard({
 
 export function UnifiedSearchResults({
   page,
-  onNavigate,
+  onOpen,
+  onNext,
 }: {
-  page: UnifiedSearchPage;
-  onNavigate?: (result: UnifiedSearchResult, href: string) => void;
+  page: SearchPageView;
+  onOpen?: (result: SearchResultView) => void;
+  onNext?: (cursor: string) => void;
 }) {
+  const visible = page.results.filter((result) => !result.hiddenDerivedChunk);
+  const hiddenCount = page.results.length - visible.length;
+  if (!visible.length)
+    return (
+      <EmptyState title="No visible results">
+        Hidden derived chunks are not canonical objects and are not displayed.
+      </EmptyState>
+    );
   return (
-    <section aria-labelledby="waystone-search-results-title">
-      <div
-        className={`ws-alert ${page.degraded ? 'ws-alert--warning' : 'ws-alert--success'}`}
-        role="status"
-      >
-        <strong>
-          {page.readiness === 'semantic-augmented'
-            ? 'Semantic-augmented search'
-            : 'Lexical-only search'}
-        </strong>
-        {page.notice && <p>{page.notice}</p>}
+    <section aria-labelledby="search-results-heading">
+      <h2 id="search-results-heading">Search results</h2>
+      {page.partial ? (
+        <p role="status" className="ws-alert ws-alert--warning">
+          Partial results are shown. Some sources are temporarily unavailable.
+        </p>
+      ) : null}
+      {hiddenCount ? (
+        <p className="ws-muted">
+          {hiddenCount} derived chunk{' '}
+          {hiddenCount === 1 ? 'match was' : 'matches were'} omitted because
+          chunks are not canonical objects.
+        </p>
+      ) : null}
+      <div className="ws-result-list">
+        {visible.map((result) => (
+          <UnifiedSearchResultCard
+            key={`${result.kind}:${result.sourceId}:${result.sourceRevision}`}
+            result={result}
+            {...(onOpen ? { onOpen } : {})}
+          />
+        ))}
       </div>
-      <h2 id="waystone-search-results-title">Search results</h2>
-      {page.results.length === 0 ? (
-        <p>No results match this query and its selected filters.</p>
-      ) : (
-        <ol className="ws-unified-results">
-          {page.results.map((result, index) => (
-            <li
-              key={`${result.kind}:${result.canonicalId}:${result.revision}:${index}`}
-            >
-              <UnifiedSearchResultCard
-                result={result}
-                {...(onNavigate ? { onNavigate } : {})}
-              />
-            </li>
-          ))}
-        </ol>
-      )}
+      {page.cursor && onNext ? (
+        <button type="button" onClick={() => onNext(page.cursor!)}>
+          Load more results
+        </button>
+      ) : null}
     </section>
-  );
-}
-
-function Definition({
-  label,
-  children,
-}: {
-  label: string;
-  children?: ReactNode;
-}) {
-  if (children === undefined || children === null || children === '')
-    return null;
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
   );
 }
 
@@ -185,78 +165,68 @@ export function ContentHistory({
 }: {
   revisions: readonly ContentRevisionMetadata[];
 }) {
+  if (!revisions.length) return <EmptyState title="No revision history" />;
   return (
-    <section>
-      <h2>History</h2>
-      {revisions.length ? (
-        <ol className="ws-revision-list">
-          {revisions.map((revision) => (
-            <li className="ws-revision" key={revision.revision}>
-              <strong>Revision {revision.revision}</strong>
-              <p>
-                {revision.timestamp}
-                {revision.author ? ` by ${revision.author}` : ''}
-              </p>
-              {revision.summary && <p>{revision.summary}</p>}
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <p>No revision history is available.</p>
-      )}
-    </section>
+    <ol className="ws-history">
+      {revisions.map((revision) => (
+        <li key={revision.revision}>
+          <strong>Revision {revision.revision}</strong>{' '}
+          <time dateTime={revision.modified}>{revision.modified}</time>
+          {revision.actor ? <span> by {revision.actor}</span> : null}
+          {revision.summary ? <p>{revision.summary}</p> : null}
+        </li>
+      ))}
+    </ol>
   );
 }
 
-export function ResourceView({ resource }: { resource: TaprootResource }) {
-  const externalLocation =
-    resource.payload.kind === 'location'
-      ? safeExternalUrl(resource.payload.location)
-      : undefined;
+export function ResourceView({ resource }: { resource: ResourcePreviewView }) {
+  const previewAllowed =
+    !resource.activeContent &&
+    resource.byteLength <= MAX_TEXT_PREVIEW_BYTES &&
+    SAFE_TEXT_MEDIA_TYPES.has(resource.mediaType) &&
+    typeof resource.text === 'string';
   return (
-    <article className="ws-content-view">
+    <article className="ws-content">
       <header>
-        <p className="ws-eyebrow">Resource</p>
-        <h1>
-          {resource.title ?? resource.id}{' '}
-          <span className="ws-id">{resource.id}</span>
-        </h1>
+        <h2>{resource.title ?? `Resource ${resource.id}`}</h2>
+        <code>{resource.id}</code>
       </header>
       <dl className="ws-metadata">
-        <Definition label="Revision">{resource.revision}</Definition>
-        <Definition label="Language">{resource.language}</Definition>
-        <Definition label="Media type">{resource.mediaType}</Definition>
-        <Definition label="Integrity">
-          {resource.integrity.algorithm}:{resource.integrity.digest} (
-          {resource.integrity.byteLength} bytes)
-        </Definition>
-        <Definition label="Location">
-          {externalLocation ? (
-            <a
-              href={externalLocation}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {resource.payload.kind === 'location'
-                ? resource.payload.location
-                : undefined}
-            </a>
-          ) : resource.payload.kind === 'location' ? (
-            resource.payload.location
-          ) : undefined}
-        </Definition>
-        <Definition label="Linked Items">
-          <a href={`/entities/${encodeURIComponent(resource.itemId)}`}>
-            Item {resource.itemId}
-          </a>
-        </Definition>
+        <div>
+          <dt>Linked Item</dt>
+          <dd>
+            <code>{resource.itemId}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Media type</dt>
+          <dd>{resource.mediaType}</dd>
+        </div>
+        <div>
+          <dt>Bytes</dt>
+          <dd>{resource.byteLength}</dd>
+        </div>
+        <div>
+          <dt>SHA-256</dt>
+          <dd>
+            <code>{resource.sha256}</code>
+          </dd>
+        </div>
       </dl>
-      {resource.payload.kind === 'inline-text' && (
-        <section>
-          <h2>Body</h2>
-          <pre className="ws-content-body">{resource.payload.text}</pre>
-        </section>
+      {previewAllowed ? (
+        <pre className="ws-resource-preview">{resource.text}</pre>
+      ) : (
+        <p role="status">
+          Preview unavailable: the payload is active, unsupported, or exceeds
+          the {MAX_TEXT_PREVIEW_BYTES}-byte text preview limit.
+        </p>
       )}
+      {resource.externalUrl ? (
+        <ExternalDestination href={resource.externalUrl}>
+          Open resource source
+        </ExternalDestination>
+      ) : null}
     </article>
   );
 }
@@ -264,186 +234,185 @@ export function ResourceView({ resource }: { resource: TaprootResource }) {
 export function AnnotationView({
   annotation,
 }: {
-  annotation: TaprootAnnotation;
+  annotation: AnnotationViewModel;
 }) {
   return (
-    <article className="ws-content-view">
+    <article className="ws-content">
       <header>
-        <p className="ws-eyebrow">Annotation</p>
-        <h1>{annotation.id}</h1>
+        <h2>Annotation {annotation.id}</h2>
+        <span>revision {annotation.revision}</span>
       </header>
-      <dl className="ws-metadata">
-        <Definition label="Revision">{annotation.revision}</Definition>
-        <Definition label="Target">
-          <a
-            href={`/${annotation.target.kind}s/${encodeURIComponent(annotation.target.sourceId)}`}
-          >
-            {annotation.target.kind} {annotation.target.sourceId}
-          </a>
-        </Definition>
-        <Definition label="Selector">
-          <SelectorDisplay
-            {...(annotation.target.selector
-              ? { selector: annotation.target.selector }
-              : {})}
-          />
-        </Definition>
-        <Definition label="Motivation">{annotation.motivation}</Definition>
-        <Definition label="Attribution">
-          {annotation.attribution.name ?? annotation.attribution.id}
-        </Definition>
-        <Definition label="Language">{annotation.language}</Definition>
-        <Definition label="Media type">{annotation.mediaType}</Definition>
-        <Definition label="Policy revision">
-          {annotation.authorization.policyRevision}
-        </Definition>
-        <Definition label="Body Resource">
-          {annotation.body.kind === 'resource' && (
-            <a
-              href={`/resources/${encodeURIComponent(annotation.body.resourceId)}`}
-            >
-              Resource {annotation.body.resourceId}
-            </a>
-          )}
-        </Definition>
-      </dl>
-      {annotation.body.kind === 'text' && (
-        <section>
-          <h2>Annotation body</h2>
-          <p>{annotation.body.text}</p>
-        </section>
-      )}
+      {annotation.bodyText ? <p>{annotation.bodyText}</p> : null}
+      {annotation.bodyResourceId ? (
+        <p>
+          Body Resource <code>{annotation.bodyResourceId}</code>
+        </p>
+      ) : null}
+      <p>
+        Targets {annotation.targetKind} <code>{annotation.targetId}</code>{' '}
+        <SelectorDisplay
+          {...(annotation.selector ? { selector: annotation.selector } : {})}
+        />
+      </p>
+      {annotation.motivation ? (
+        <p>Motivation: {annotation.motivation}</p>
+      ) : null}
     </article>
   );
 }
 
-export function PromptView({ prompt }: { prompt: WorkshopPrompt }) {
+export function PromptView({ prompt }: { prompt: PromptViewModel }) {
   return (
-    <article className="ws-content-view">
+    <article className="ws-content">
       <header>
-        <p className="ws-eyebrow">Prompt</p>
-        <h1>
-          {prompt.title} <span className="ws-id">{prompt.id}</span>
-        </h1>
+        <h2>{prompt.title}</h2>
+        <code>{prompt.name}</code>
       </header>
-      <dl className="ws-metadata">
-        <Definition label="Revision">{prompt.revision}</Definition>
-        <Definition label="Language">{prompt.language}</Definition>
-        <Definition label="Variables">
-          {Object.keys(prompt.variables).join(', ')}
-        </Definition>
-      </dl>
-      <section>
-        <h2>Prompt text</h2>
-        <pre className="ws-content-body">{prompt.promptText}</pre>
-      </section>
+      <pre>{prompt.promptText}</pre>
+      <p>
+        {prompt.active ? 'Active' : 'Inactive'} · revision {prompt.revision}
+      </p>
+      <details>
+        <summary>Variable schema</summary>
+        <pre>{JSON.stringify(prompt.variables, null, 2)}</pre>
+      </details>
     </article>
   );
 }
 
-export function SearchHealthView({ health }: { health: SearchHealth }) {
+export function MemoryView({ memory }: { memory: MemoryViewModel }) {
   return (
-    <section className="ws-health" aria-labelledby="search-health-title">
-      <h2 id="search-health-title">Search status</h2>
-      <div
-        className={`ws-alert ${health.lexicalReady ? 'ws-alert--success' : 'ws-alert--danger'}`}
-        role="status"
-      >
-        Lexical search is {health.lexicalReady ? 'ready' : 'not ready'};
-        semantic search is{' '}
-        {health.semanticReady
-          ? 'ready'
-          : health.semanticConfigured
-            ? 'configured but not ready'
-            : 'not configured'}
-        .
-      </div>
-      <dl className="ws-metadata">
-        <Definition label="Selected configuration">
-          {health.selectedConfiguration ?? 'None'}
-        </Definition>
-        <Definition label="Coverage">
-          {health.coverage
-            ? `${health.coverage.indexed}${health.coverage.total === undefined ? '' : ` of ${health.coverage.total}`}`
-            : 'Unknown'}
-        </Definition>
-        <Definition label="Pending work">{health.pendingWork ?? 0}</Definition>
-      </dl>
-      {health.schedules?.length ? (
-        <section>
-          <h3>Schedules</h3>
-          <ul>
-            {health.schedules.map((schedule) => (
-              <li key={schedule.id}>
-                {schedule.id}: {schedule.state}
-                {schedule.nextRun ? `; next ${schedule.nextRun}` : ''}
-              </li>
-            ))}
-          </ul>
-        </section>
+    <article className="ws-content">
+      <h2>{memory.title}</h2>
+      <p>{memory.description}</p>
+      <pre>{memory.content}</pre>
+      <p>
+        <code>{memory.slug}</code> · revision {memory.revision}
+      </p>
+    </article>
+  );
+}
+
+export function TaskView({ task }: { task: TaskViewModel }) {
+  return (
+    <article className="ws-content">
+      <header>
+        <h2>{task.title}</h2>
+        <span>{task.state}</span>
+      </header>
+      <p>{task.description}</p>
+      {task.objective ? <p>Objective: {task.objective}</p> : null}
+      {task.lease ? (
+        <p role={task.lease.expired ? 'alert' : undefined}>
+          {task.lease.expired
+            ? 'The task lease expired. Refresh before changing ownership.'
+            : `Claimed${task.lease.ownerPrincipalId ? ` by ${task.lease.ownerPrincipalId}` : ''}${task.lease.expiresAt ? ` until ${task.lease.expiresAt}` : ''}.`}
+        </p>
       ) : null}
-      {health.workers?.length ? (
-        <section>
-          <h3>Worker progress</h3>
-          <ul>
-            {health.workers.map((worker) => (
-              <li key={worker.worker}>
-                {worker.worker}: {worker.completed}
-                {worker.total === undefined ? '' : ` of ${worker.total}`} (
-                {worker.state})
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {health.failures?.length ? (
-        <section>
-          <h3>Bounded failures</h3>
-          <ul>
-            {health.failures.map((failure) => (
-              <li key={failure.id}>
-                {failure.kind}: {redactDiagnosticText(failure.message)} (
-                {failure.attempts} attempts)
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {health.circuits?.length ? (
-        <section>
-          <h3>Circuits</h3>
-          <ul>
-            {health.circuits.map((circuit) => (
-              <li key={circuit.id}>
-                {circuit.id}: {circuit.state}
-                {circuit.reason
-                  ? ` — ${redactDiagnosticText(circuit.reason)}`
-                  : ''}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {task.result ? <p>Result: {task.result}</p> : null}
+    </article>
+  );
+}
+
+export function TaskPacketViewComponent({
+  packet,
+}: {
+  packet: TaskPacketView;
+}) {
+  return (
+    <section aria-labelledby="task-packet-heading">
+      <h2 id="task-packet-heading">Task packet</h2>
+      <TaskView task={packet.task} />
+      <h3>Context</h3>
+      <ul>
+        {packet.context.map((context) => (
+          <li key={`${context.label ?? ''}:${context.query}`}>
+            {context.label ? <strong>{context.label}</strong> : null}
+            <code>{context.query}</code>
+            {context.unavailable ? (
+              <span>Dependency unavailable</span>
+            ) : (
+              context.summary
+            )}
+          </li>
+        ))}
+      </ul>
+      <h3>Memories</h3>
+      {packet.memories.map((memory) => (
+        <MemoryView key={memory.slug} memory={memory} />
+      ))}
     </section>
   );
 }
 
-export function HostOperationProgress({
-  operation,
+export function RevisionHistory<T>({
+  revisions,
+  render,
 }: {
-  operation: HostOperation;
+  revisions: readonly RevisionView<T>[];
+  render: (value: T) => ReactNode;
 }) {
-  const max = operation.total ?? Math.max(operation.completed ?? 0, 1);
   return (
-    <article className="ws-operation">
-      <h3>{operation.kind}</h3>
-      <p role="status">{operation.state}</p>
-      {operation.completed !== undefined && (
-        <progress value={operation.completed} max={max}>
-          {operation.completed} of {operation.total ?? 'unknown'}
-        </progress>
-      )}
-      {operation.message && <p>{redactDiagnosticText(operation.message)}</p>}
-    </article>
+    <ol className="ws-history">
+      {revisions.map((revision) => (
+        <li key={revision.revision}>
+          <h3>Revision {revision.revision}</h3>
+          <time dateTime={revision.createdAt}>{revision.createdAt}</time>
+          {render(revision.value)}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export function ReadinessStatus({ readiness }: { readiness: ReadinessView }) {
+  if (!readiness.authenticated)
+    return (
+      <PermissionDenied>Sign in through the host to continue.</PermissionDenied>
+    );
+  if (!readiness.authorized)
+    return (
+      <PermissionDenied>
+        Workshop has not authorized this view.
+      </PermissionDenied>
+    );
+  return (
+    <section aria-labelledby="readiness-heading">
+      <h2 id="readiness-heading">Installation readiness</h2>
+      <p role="status" aria-live="polite">
+        {readiness.lexicalReady
+          ? 'Lexical search is available.'
+          : 'Search is currently unavailable.'}{' '}
+        {readiness.semanticReady
+          ? 'Semantic ranking is available.'
+          : readiness.semanticConfigured
+            ? `Semantic ranking is degraded${readiness.semanticReason ? `: ${redactDiagnosticText(readiness.semanticReason)}` : '.'} Lexical search may still be used.`
+            : 'Semantic ranking is not configured; lexical search may still be used.'}
+      </p>
+    </section>
+  );
+}
+
+export function SearchAdministrationStatus({
+  status,
+}: {
+  status: SearchAdministrationView;
+}) {
+  if (!status.authorized) return <PermissionDenied />;
+  return (
+    <section aria-labelledby="search-admin-heading">
+      <h2 id="search-admin-heading">Search administration</h2>
+      <p role="status">State: {status.state}</p>
+      {status.selectedConfiguration ? (
+        <p>Configuration: {status.selectedConfiguration}</p>
+      ) : null}
+      {status.failures?.length ? (
+        <ul>
+          {status.failures.map((failure) => (
+            <li key={failure.id}>{redactDiagnosticText(failure.message)}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }

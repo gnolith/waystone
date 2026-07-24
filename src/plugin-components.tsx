@@ -14,10 +14,10 @@ import type {
   WaystoneDashboardContribution,
   WaystoneEntityPanelContribution,
   WaystoneExtensionName,
-  WaystoneOnboardingContribution,
   WaystonePluginContext,
   WaystonePluginProviderProps,
   WaystoneRegistry,
+  WaystoneResultContribution,
   WaystoneSettingsContribution,
 } from './plugin-contracts.js';
 
@@ -92,17 +92,17 @@ class PluginBoundary extends Component<
 type RenderableContribution =
   | WaystoneDashboardContribution
   | WaystoneEntityPanelContribution
-  | WaystoneOnboardingContribution
+  | WaystoneResultContribution
   | WaystoneSettingsContribution;
 export function WaystoneExtensionPoint({
   name,
   entity,
-  onComplete,
+  result,
   empty = null,
 }: {
   name: WaystoneExtensionName;
   entity?: WikibaseEntity;
-  onComplete?: () => void;
+  result?: unknown;
   empty?: ReactNode;
 }) {
   const { registry, context, onPluginError } = usePlugins();
@@ -123,7 +123,7 @@ export function WaystoneExtensionPoint({
         const props = {
           ...context,
           ...(entity ? { entity } : {}),
-          ...(onComplete ? { onComplete } : {}),
+          ...(result !== undefined ? { result } : {}),
         };
         const Panel = contribution.component as ComponentType<typeof props>;
         return (

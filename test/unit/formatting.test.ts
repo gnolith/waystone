@@ -7,7 +7,7 @@ import {
   formatSnakValue,
   formatTime,
 } from '../../src/formatting.js';
-import { publicErrorMessage, WaystoneRequestError } from '../../src/errors.js';
+import { publicErrorMessage } from '../../src/errors.js';
 
 describe('display formatting', () => {
   it('falls back from language to another label and then ID', () => {
@@ -54,13 +54,13 @@ describe('display formatting', () => {
     expect(externalIdHref('javascript:$1', 'alert(1)')).toBeUndefined();
   });
   it('keeps diagnostics private in generic public errors', () => {
-    const error = new WaystoneRequestError('database stack trace', {
-      kind: 'server',
+    const error = Object.assign(new Error('database stack trace'), {
+      code: 'internal_error',
     });
     expect(publicErrorMessage(error)).not.toContain('database');
     expect(
       publicErrorMessage(
-        new WaystoneRequestError('bad field', { kind: 'validation' }),
+        Object.assign(new Error('bad field'), { code: 'validation_failed' }),
       ),
     ).toBe('bad field');
   });

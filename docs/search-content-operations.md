@@ -1,13 +1,7 @@
-# Search, content, and operations
+# Search and content operations
 
-Waystone consumes one host-provided search capability covering Statement, Item, Task, Memory, Prompt, Resource, and Annotation results. `UnifiedSearchScreen` sends explicit kinds, kind-aware filters, a bounded page size, and an opaque cursor. It displays lexical-only or semantic-augmented readiness from the response. It offers no invented search-mode selector, does not group independently ranked chunks, and only removes an invalid cursor after the user chooses same-query recovery.
+`UnifiedSearchScreen` calls `search` with any combination of the seven result kinds. Scores are ordering signals and are not displayed as percentages. Hidden derived chunks are omitted. Semantic degradation is explicit while lexical results remain usable.
 
-Every result shows canonical identity and revision. Optional bounded snippets, language, selectors, and contributing statement IDs render as React text. Result links use the owning canonical route, and `hydrateSearchResult` calls the matching entity, Task, Memory, Prompt, Resource, or Annotation read operation. Resource and Item identities remain labelled and linked separately.
+Opening a result calls `search_hydrate`; Waystone does not infer a read operation from its kind. Resource payload previews request a bounded revision through `hydrate_resource`, escape text, refuse active content, and only expose safe `http` or `https` external destinations with isolation attributes.
 
-Resources may carry host-returned metadata, integrity, location, body, language, media type, selected excerpts, and linked Item IDs. External locations become links only for HTTP or HTTPS. Durable OCR, transcript, translation, and caption works should be created as Resources and linked to their source with an Annotation. Small text remains an Annotation body. Waystone never dereferences an arbitrary Resource location.
-
-Annotations expose discriminated text/Resource bodies and typed targets for every search kind, selector, motivation, creator/generator, attribution, language/media type, and canonical authorization. Prompts expose Workshop's name, prompt text, scope, role, variable schema, activation, priority/order, policy/authorization metadata, and exact history events. Persistence and authorization remain host responsibilities.
-
-`SearchHealthView` presents lexical readiness, semantic configuration/readiness, selected configuration, coverage, pending work, schedules, bounded failures, circuits, and workers. `SearchAdministration` renders controls only when `adminAuthorized` is exactly true in the server response. Cost, token, and duration estimates remain visibly unknown when absent. Budget approval, failure exclusion, configuration retirement, and embedding deletion require confirmation. Diagnostic text is credential-redacted and never rendered as HTML.
-
-`HostOperationsPanel` starts snapshot, export, import, and restore only through the host API and renders returned progress/failure records. Waystone never reads database files, credentials, indexes, or vector stores.
+Search administration is authorization-aware. The host supplies allowed action names and input; Waystone calls those named Workshop operations and renders bounded, redacted status.

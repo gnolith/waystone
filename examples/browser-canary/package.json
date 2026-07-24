@@ -1,0 +1,19 @@
+{
+  "name": "waystone-browser-canary",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsc --noEmit && esbuild src/canary.tsx --bundle --platform=browser --format=esm --outfile=dist/canary.js && node src/ssr.mjs"
+  },
+  "dependencies": {
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "esbuild": "0.25.12",
+    "typescript": "5.9.3"
+  }
+}

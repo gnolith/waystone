@@ -1,50 +1,27 @@
 import { build } from 'esbuild';
 
 const budgets = {
-  'base server-safe import': {
-    source:
-      "export { WaystoneShell, EntityPage, StatementGroups } from './dist/index.js';",
-    limit: 45_000,
-  },
-  'base client shell': {
-    source:
-      "export { WaystoneErrorBoundary, EntitySearch } from './dist/client.js';",
-    limit: 30_000,
-  },
-  'SPARQL editor': {
-    source: "export { SparqlEditor } from './dist/client.js';",
-    limit: 25_000,
-  },
-  'entity editor': {
-    source:
-      "export { EntityEditor, StatementEditor, SitelinkEditor, EntityLifecycleControls } from './dist/client.js';",
-    limit: 35_000,
-  },
-  'unified search': {
-    source:
-      "export { UnifiedSearchScreen, hydrateSearchResult } from './dist/client.js';",
-    limit: 35_000,
-  },
-  'content editors': {
-    source:
-      "export { ResourceEditor, AnnotationEditor, PromptEditor } from './dist/client.js';",
-    limit: 35_000,
-  },
-  'search and host operations': {
-    source:
-      "export { SearchAdministration, HostOperationsPanel } from './dist/client.js';",
-    limit: 35_000,
-  },
+  'server-safe views': [
+    "export { WaystoneShell, EntityPage, UnifiedSearchResults } from './dist/index.js';",
+    55_000,
+  ],
+  'entity operations': [
+    "export { EntitySearch, EntityEditor, SparqlEditor } from './dist/client.js';",
+    45_000,
+  ],
+  'content operations': [
+    "export { ResourceBrowser, AnnotationBrowser, PromptBrowser, MemoryBrowser } from './dist/client.js';",
+    65_000,
+  ],
+  'task operations': [
+    "export { TaskBrowser, TaskWorkspace } from './dist/client.js';",
+    45_000,
+  ],
 };
-
 let failed = false;
-for (const [label, budget] of Object.entries(budgets)) {
+for (const [label, [source, limit]] of Object.entries(budgets)) {
   const result = await build({
-    stdin: {
-      contents: budget.source,
-      resolveDir: process.cwd(),
-      sourcefile: `${label}.js`,
-    },
+    stdin: { contents: source, resolveDir: process.cwd() },
     bundle: true,
     format: 'esm',
     platform: 'browser',
@@ -53,13 +30,12 @@ for (const [label, budget] of Object.entries(budgets)) {
     external: ['react', 'react-dom', 'react/jsx-runtime'],
   });
   const size = result.outputFiles.reduce(
-    (total, file) => total + file.contents.byteLength,
+    (sum, file) => sum + file.contents.byteLength,
     0,
   );
-  const status = size > budget.limit ? 'FAIL' : 'PASS';
   console.log(
-    `${status} ${label}: ${size} / ${budget.limit} bytes (minified ESM, React external)`,
+    `${size <= limit ? 'PASS' : 'FAIL'} ${label}: ${size} / ${limit} bytes`,
   );
-  if (size > budget.limit) failed = true;
+  failed ||= size > limit;
 }
 if (failed) process.exit(1);

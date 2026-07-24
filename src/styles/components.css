@@ -366,25 +366,15 @@
   font-size: 0.78rem;
   white-space: pre-wrap;
 }
-.ws-editor,
-.ws-onboarding {
+.ws-editor {
   display: grid;
   gap: var(--ws-space-4);
   max-width: 52rem;
 }
-.ws-editor details,
-.ws-onboarding fieldset {
+.ws-editor details {
   border: 1px solid var(--ws-color-border);
   border-radius: var(--ws-radius-md);
   padding: var(--ws-space-4);
-}
-.ws-onboarding fieldset {
-  display: grid;
-  gap: var(--ws-space-4);
-}
-.ws-onboarding progress {
-  width: 100%;
-  accent-color: var(--ws-color-accent);
 }
 .ws-code-input,
 .ws-sparql__editor {
