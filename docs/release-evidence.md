@@ -22,4 +22,4 @@ Repository preflight:
 - dependency updates/review and pinned CodeQL workflows: present
 - latest public npm package has provenance attestations
 
-Workshop binding: commit `799c37dd2a0f8aeffb20f8f29ebdde67bd83caf7`, tree `c765b0f273fd552f03800b9699fc539763322d48`, archive SHA-256 `477ce5b388aa75f4d451555341fbdd7cc74092d90256de2ec6ae054aff019b70`.
+Workshop binding: commit `c2e345c0b287af7c8622e226943af83a11a33ac7`, tree `fbf15a852ee20d4dedabc6cfcb3403bb6419520d`, archive SHA-256 `477ce5b388aa75f4d451555341fbdd7cc74092d90256de2ec6ae054aff019b70`, SBOM SHA-256 `1483b5ff63ab9c74b3bd21fd992149c5c41fd255bce0def06f23c63b3f90d750`.
