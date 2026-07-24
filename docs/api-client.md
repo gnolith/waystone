@@ -16,6 +16,6 @@ Applications construct and configure the real client outside Waystone. Waystone 
 
 Interactive components call named operations and cancel superseded/unmounted work with `AbortSignal`. Display models in `model.ts` are UI-owned projections, not protocol DTOs.
 
-Search supports exactly `item`, `resource`, `annotation`, `prompt`, `memory`, `task`, and `statement`. A Property is an item result whose `entityType` is `property`. Hydration is a separate authorized `search.hydrate` call.
+Search supports exactly `item`, `resource`, `annotation`, `prompt`, `memory`, `task`, and `statement`. A Property is an item result whose `entityType` is `property`. Hydration is a separate authorized `search_hydrate` call.
 
-The repository uses a test-only structural client while the exact breaking Workshop package coordinate is pending. That fixture is not exported or packed.
+The public client and operation-name types resolve from exact `@gnolith/workshop@0.5.0`. Tests install its checksum-bound packed archive; the fake client supplies results only and cannot invent operation names.

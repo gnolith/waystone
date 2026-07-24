@@ -84,7 +84,7 @@
     "prepack": "npm run check:package"
   },
   "peerDependencies": {
-    "@gnolith/workshop": ">=0.5.0 <0.6.0",
+    "@gnolith/workshop": "0.5.0",
     "@types/react": ">=19 <20",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"
@@ -104,6 +104,7 @@
   "packageManager": "npm@11.9.0",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@gnolith/workshop": "file:test/fixtures/gnolith-workshop-0.5.0.tgz",
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.0.0",

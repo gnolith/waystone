@@ -147,6 +147,7 @@ export const fixtureTask: TaskViewModel = {
   updatedAt: '2026-07-23T00:00:00Z',
   lease: {
     ownerPrincipalId: 'researcher-1',
+    leaseToken: 'fixture-lease-token',
     claimedAt: '2026-07-23T00:00:00Z',
     expiresAt: '2026-07-23T01:00:00Z',
   },

@@ -1,4 +1,9 @@
 import type { WorkshopClient, WorkshopCallOptions } from '../../src/model.js';
+import type {
+  OperationInput,
+  OperationName,
+  OperationOutput,
+} from '@gnolith/workshop/client';
 
 export interface RecordedWorkshopCall {
   name: string;
@@ -11,11 +16,11 @@ export function createFakeWorkshopClient(
 ) {
   const calls: RecordedWorkshopCall[] = [];
   const client: WorkshopClient = {
-    async call<Name extends string, Input = undefined, Output = unknown>(
+    async call<Name extends OperationName>(
       name: Name,
-      input: Input,
+      input: OperationInput<Name>,
       options?: WorkshopCallOptions,
-    ): Promise<Output> {
+    ): Promise<OperationOutput<Name>> {
       calls.push({
         name,
         input,
@@ -25,8 +30,8 @@ export function createFakeWorkshopClient(
         throw Object.assign(new Error('Cancelled'), { code: 'cancelled' });
       const handler = handlers[name];
       if (isFixtureHandler(handler))
-        return (await handler(input, options)) as Output;
-      if (name in handlers) return handler as Output;
+        return (await handler(input, options)) as OperationOutput<Name>;
+      if (name in handlers) return handler as OperationOutput<Name>;
       throw Object.assign(new Error(`Unhandled fixture operation ${name}`), {
         code: 'fixture_unhandled',
       });

@@ -1,34 +1,52 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
+import {
+  CATALOG_DIGEST,
+  OPERATION_SCHEMA_VERSION,
+  operationCatalog,
+} from '@gnolith/workshop/protocol';
 
-const expectedOperations = JSON.parse(
-  readFileSync('test/fixtures/workshop-operation-catalog.json', 'utf8'),
-);
-const canonical = JSON.stringify([...expectedOperations].sort());
-const digest = createHash('sha256').update(canonical).digest('hex');
 const identity = JSON.parse(
   readFileSync('test/fixtures/workshop-protocol-identity.json', 'utf8'),
 );
-if (identity.catalogDigest !== digest)
-  throw new Error(
-    `Fixture catalog digest mismatch: expected ${identity.catalogDigest}, computed ${digest}.`,
-  );
-if (!identity.schemaVersion.startsWith('architecture-reset-candidate-'))
-  throw new Error(
-    'Fixture schema version is not an architecture-reset candidate.',
-  );
-const source = readdirSync('src')
-  .filter((file) => /\.(?:ts|tsx)$/.test(file))
-  .map((file) => readFileSync(`src/${file}`, 'utf8'))
-  .join('\n');
-const missing = expectedOperations.filter(
-  (operation) =>
-    !source.includes(`'${operation}'`) && !source.includes(`"${operation}"`),
+const expectedOperations = JSON.parse(
+  readFileSync('test/fixtures/workshop-operation-catalog.json', 'utf8'),
 );
-if (missing.length)
-  throw new Error(
-    `UI does not reference expected operations: ${missing.join(', ')}`,
+const installed = JSON.parse(
+  readFileSync('node_modules/@gnolith/workshop/package.json', 'utf8'),
+);
+const archive = readFileSync(identity.archive);
+const actualNames = operationCatalog.map(({ name }) => name);
+const failures = [];
+
+if (
+  installed.name !== identity.package ||
+  installed.version !== identity.version
+)
+  failures.push('Installed Workshop coordinate does not match the binding.');
+if (statSync(identity.archive).size !== identity.archiveBytes)
+  failures.push('Workshop archive byte length does not match the binding.');
+if (
+  createHash('sha256').update(archive).digest('hex') !== identity.archiveSha256
+)
+  failures.push('Workshop archive SHA-256 does not match the binding.');
+if (CATALOG_DIGEST !== identity.catalogDigest)
+  failures.push('Workshop public catalog digest does not match the binding.');
+if (OPERATION_SCHEMA_VERSION !== identity.operationSchemaVersion)
+  failures.push(
+    'Workshop operation schema version does not match the binding.',
   );
+if (actualNames.length !== identity.operationCount)
+  failures.push('Workshop operation count does not match the binding.');
+if (JSON.stringify(actualNames) !== JSON.stringify(expectedOperations))
+  failures.push(
+    'Workshop public operation catalog does not match the reviewed inventory.',
+  );
+
+if (failures.length) {
+  console.error(failures.join('\n'));
+  process.exit(1);
+}
 console.log(
-  `Test-only Workshop structural fixture verified: ${identity.schemaVersion}, ${identity.catalogDigest}. Exact Workshop candidate binding remains a handoff requirement.`,
+  `Exact ${identity.package}@${identity.version} archive, schema, and ${actualNames.length}-operation catalog verified (${CATALOG_DIGEST}).`,
 );

@@ -53,11 +53,9 @@ export class WaystoneErrorBoundary extends Component<
 
 export function EntitySearch({
   client,
-  language = 'en',
   onSelect,
 }: {
   client: WorkshopClient;
-  language?: string;
   onSelect?: (id: string) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -72,9 +70,9 @@ export function EntitySearch({
     setError(undefined);
     try {
       setResult(
-        await callWorkshop(client, 'knowledge.entity.search', {
+        await callWorkshop(client, 'search', {
           text: query,
-          language,
+          kinds: ['item'],
         }),
       );
     } catch (cause) {
@@ -136,17 +134,18 @@ export function CreateEntityEditor({
     try {
       const entity = await callWorkshop<
         {
-          entityType: 'item' | 'property';
-          label: string;
-          description?: string;
-          language: string;
+          idempotencyKey: string;
+          authoredText: string;
+          data: Readonly<Record<string, unknown>>;
         },
         WikibaseEntity
-      >(client, 'knowledge.entity.create', {
-        entityType,
-        label,
-        ...(description ? { description } : {}),
-        language: 'en',
+      >(client, entityType === 'property' ? 'create_property' : 'create_item', {
+        idempotencyKey: `create-${entityType}-${crypto.randomUUID()}`,
+        authoredText: `Create ${entityType}: ${label}`,
+        data: {
+          labels: { en: label },
+          ...(description ? { descriptions: { en: description } } : {}),
+        },
       });
       onSaved?.(entity);
     } catch (cause) {
@@ -208,15 +207,27 @@ export function EntityEditor({
     try {
       const value = await callWorkshop<
         {
-          id: string;
+          entityId: string;
           expectedRevision: number;
-          changes: { label: string; language: string };
+          idempotencyKey: string;
+          mutations: readonly {
+            kind: 'label';
+            authoredText: string;
+            value: Readonly<Record<string, unknown>>;
+          }[];
         },
         WikibaseEntity
-      >(client, 'knowledge.entity.update', {
-        id: entity.id,
+      >(client, 'mutate_entity', {
+        entityId: entity.id,
         expectedRevision: entity.revision,
-        changes: { label, language: 'en' },
+        idempotencyKey: `label-${entity.id}-${entity.revision}`,
+        mutations: [
+          {
+            kind: 'label',
+            authoredText: `Set English label to ${label}`,
+            value: { language: 'en', value: label },
+          },
+        ],
       });
       onSaved?.(value);
     } catch (cause) {
@@ -266,10 +277,17 @@ export function StatementEditor({
     setError(undefined);
     try {
       onSaved?.(
-        await callWorkshop(client, 'knowledge.statement.add', {
+        await callWorkshop(client, 'mutate_entity', {
           entityId: entity.id,
           expectedRevision: entity.revision,
-          statement: { propertyId, value, text },
+          idempotencyKey: `statement-${entity.id}-${entity.revision}`,
+          mutations: [
+            {
+              kind: 'statement',
+              authoredText: text,
+              value: { propertyId, value },
+            },
+          ],
         }),
       );
     } catch (cause) {
@@ -331,15 +349,25 @@ export function SitelinkEditor({
           {
             entityId: string;
             expectedRevision: number;
-            site: string;
-            title: string;
+            idempotencyKey: string;
+            mutations: readonly {
+              kind: 'sitelink';
+              authoredText: string;
+              value: Readonly<Record<string, unknown>>;
+            }[];
           },
           WikibaseEntity
-        >(client, 'knowledge.sitelink.set', {
+        >(client, 'mutate_entity', {
           entityId: entity.id,
           expectedRevision: entity.revision,
-          site,
-          title,
+          idempotencyKey: `sitelink-${entity.id}-${entity.revision}`,
+          mutations: [
+            {
+              kind: 'sitelink',
+              authoredText: `Set ${site} sitelink to ${title}`,
+              value: { site, title },
+            },
+          ],
         }).then(onSaved);
       }}
     >
@@ -362,73 +390,6 @@ export function SitelinkEditor({
       </label>
       <button type="submit">Save sitelink</button>
     </form>
-  );
-}
-
-export function EntityLifecycleControls({
-  client,
-  entity,
-  onSaved,
-}: {
-  client: WorkshopClient;
-  entity: WikibaseEntity;
-  onSaved?: (entity: WikibaseEntity) => void;
-}) {
-  async function remove() {
-    if (!window.confirm(`Archive ${entity.id}?`)) return;
-    onSaved?.(
-      await callWorkshop(client, 'knowledge.entity.archive', {
-        id: entity.id,
-        expectedRevision: entity.revision,
-      }),
-    );
-  }
-  return (
-    <div className="ws-actions">
-      <button
-        type="button"
-        className="ws-button--danger"
-        onClick={() => void remove()}
-      >
-        Archive entity
-      </button>
-    </div>
-  );
-}
-
-export function RevertRevisionControl({
-  client,
-  entityId,
-  revision,
-  expectedRevision,
-  onSaved,
-}: {
-  client: WorkshopClient;
-  entityId: string;
-  revision: number;
-  expectedRevision: number;
-  onSaved?: (entity: WikibaseEntity) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() =>
-        void callWorkshop<
-          {
-            id: string;
-            revision: number;
-            expectedRevision: number;
-          },
-          WikibaseEntity
-        >(client, 'knowledge.entity.revert', {
-          id: entityId,
-          revision,
-          expectedRevision,
-        }).then(onSaved)
-      }
-    >
-      Revert to revision {revision}
-    </button>
   );
 }
 
@@ -506,10 +467,13 @@ export function SparqlEditor({ client }: { client: WorkshopClient }) {
     setResult(undefined);
     setState('validating');
     try {
-      const checked = await callWorkshop<string, SparqlValidationResult>(
+      const checked = await callWorkshop<
+        { query: string },
+        SparqlValidationResult
+      >(
         client,
-        'sparql.validate',
-        query,
+        'validate_sparql',
+        { query },
         { signal: controller.current.signal },
       );
       setValidation(checked);
@@ -518,10 +482,13 @@ export function SparqlEditor({ client }: { client: WorkshopClient }) {
         return;
       }
       setState('running');
-      const nextResult = await callWorkshop<string, SparqlQueryResult>(
+      const nextResult = await callWorkshop<
+        { query: string },
+        SparqlQueryResult
+      >(
         client,
-        'sparql.query',
-        query,
+        'query_sparql',
+        { query },
         { signal: controller.current.signal },
       );
       setResult(nextResult);
@@ -609,15 +576,15 @@ export function EntityBrowser({ client }: { client: WorkshopClient }) {
     setError(undefined);
     try {
       const [value, history] = await Promise.all([
-        callWorkshop<{ id: string }, WikibaseEntity>(
+        callWorkshop<{ entityId: string }, WikibaseEntity>(
           client,
-          'knowledge.entity.get',
-          { id },
+          'get_entity',
+          { entityId: id },
         ),
-        callWorkshop<{ id: string; limit: number }, EntityRevisionPage>(
+        callWorkshop<{ entityId: string }, EntityRevisionPage>(
           client,
-          'knowledge.entity.history',
-          { id, limit: 50 },
+          'entity_history',
+          { entityId: id },
         ),
       ]);
       setEntity(value);

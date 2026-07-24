@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { OperationInput, OperationName } from '@gnolith/workshop/client';
 import type {
   WorkshopCallOptions,
   WorkshopClient,
@@ -23,19 +24,28 @@ export function isWorkshopRequestError(
   );
 }
 
-export async function callWorkshop<Input, Output>(
+export async function callWorkshop<
+  Input extends object,
+  Output,
+  Name extends OperationName = OperationName,
+>(
   client: WorkshopClient,
-  operation: string,
+  operation: Name,
   input: Input,
   options?: WorkshopCallOptions,
 ): Promise<Output> {
-  return client.call<string, Input, Output>(operation, input, options);
+  return client.call(
+    operation,
+    input as OperationInput<Name>,
+    options,
+  ) as Promise<Output>;
 }
 
-export function useWorkshopOperation<Input, Output>(
-  client: WorkshopClient,
-  operation: string,
-) {
+export function useWorkshopOperation<
+  Input extends object,
+  Output,
+  Name extends OperationName = OperationName,
+>(client: WorkshopClient, operation: Name) {
   const [state, setState] = useState<OperationState<Output>>({
     status: 'idle',
   });

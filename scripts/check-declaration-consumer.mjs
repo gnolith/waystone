@@ -27,6 +27,9 @@ function run(args, cwd = process.cwd()) {
 
 const root = mkdtempSync(path.join(tmpdir(), 'waystone-declarations-'));
 const consumer = path.join(root, 'consumer');
+const workshopArchive = path.resolve(
+  'test/fixtures/gnolith-workshop-0.5.0.tgz',
+);
 try {
   const packed = JSON.parse(
     run(['pack', '--ignore-scripts', '--json', '--pack-destination', root]),
@@ -88,6 +91,7 @@ void kinds; void waystoneAssetManifest;
       '--ignore-scripts',
       '--save-exact',
       archive,
+      workshopArchive,
       '@types/react@19.2.14',
       'react@19.2.6',
       'react-dom@19.2.6',

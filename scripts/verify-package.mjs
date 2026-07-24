@@ -13,8 +13,8 @@ if (manifest.version !== '0.3.0')
   errors.push('Architecture reset must be version 0.3.0.');
 if (manifest.dependencies && Object.keys(manifest.dependencies).length)
   errors.push('Waystone must have no runtime dependencies.');
-if (manifest.peerDependencies?.['@gnolith/workshop'] !== '>=0.5.0 <0.6.0')
-  errors.push('Workshop peer range must identify the reset protocol line.');
+if (manifest.peerDependencies?.['@gnolith/workshop'] !== '0.5.0')
+  errors.push('Workshop peer must bind the exact reset protocol release.');
 
 for (const [name, target] of Object.entries(manifest.exports)) {
   for (const value of typeof target === 'string'

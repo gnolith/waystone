@@ -25,10 +25,11 @@ if (
 )
   failures.push('Changelog lacks the dated candidate heading.');
 if (
-  !identity.exactCoordinate ||
+  identity.package !== '@gnolith/workshop' ||
+  identity.version !== '0.5.0' ||
   !identity.archiveSha256 ||
   !identity.catalogDigest ||
-  identity.schemaVersion.includes('candidate')
+  identity.schemaVersion !== 9
 )
   failures.push(
     'Exact Workshop release coordinate, archive SHA-256, and published catalog identity are not bound.',

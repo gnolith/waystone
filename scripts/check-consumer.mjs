@@ -21,6 +21,9 @@ function run(args, cwd = process.cwd()) {
 
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'waystone-browser-'));
 const consumer = path.join(temporaryRoot, 'consumer');
+const workshopArchive = path.resolve(
+  'test/fixtures/gnolith-workshop-0.5.0.tgz',
+);
 try {
   const packed = JSON.parse(
     run([
@@ -42,7 +45,10 @@ try {
       return path.basename(source) !== 'node_modules';
     },
   });
-  run(['install', '--ignore-scripts', '--save-exact', archive], consumer);
+  run(
+    ['install', '--ignore-scripts', '--save-exact', archive, workshopArchive],
+    consumer,
+  );
   process.stdout.write(run(['test'], consumer));
   console.log('Exact packed archive passed the isolated browser consumer.');
 } finally {

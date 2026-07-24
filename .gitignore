@@ -5,5 +5,6 @@ reports/
 artifacts/
 *.tsbuildinfo
 *.tgz
+!test/fixtures/gnolith-workshop-0.5.0.tgz
 .env
 .env.*

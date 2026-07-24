@@ -10,6 +10,6 @@ Source ownership:
 - `site-components.tsx`: route-free screen composition.
 - `test/fixtures/fake-workshop-client.ts`: test-only client.
 
-Consumers must bind an exact Workshop architecture-reset release before publication. Required handoff evidence is its package coordinate, archive SHA-256, integrity, and named-operation catalog digest. Until supplied, the candidate uses catalog digest `51431fef2811f73c9cbe9b30083660a42c091aeb5b6eca952cd89d5bbfd34f61` only in tests.
+The candidate binds `@gnolith/workshop@0.5.0`, commit `799c37dd2a0f8aeffb20f8f29ebdde67bd83caf7`, archive SHA-256 `477ce5b388aa75f4d451555341fbdd7cc74092d90256de2ec6ae054aff019b70`, schema 9, and catalog digest `577cc1de501b0ae3556eb1d32e7dd516c70a09c5b6226d671cec312068fba3dd`.
 
 Candidate artifacts contain the packed tarball, CycloneDX SBOM, immutable CSS asset/manifest, checksums, commit identity, and the unresolved binding field.

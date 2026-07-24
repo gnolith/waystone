@@ -1,5 +1,5 @@
 # Workshop dependency
 
-Waystone is structurally typed so applications may pass the official Workshop client without an adapter. The peer range reserves the breaking named-operation line; release publication additionally requires an exact tested coordinate and immutable archive evidence.
+Waystone imports the generated `WorkshopClient`, `OperationName`, and error types from exact `@gnolith/workshop@0.5.0`. Tests install the reviewed packed archive and verify its 51-operation catalog, schema identity, integrity, and SHA-256 before exercising UI calls.
 
-The public package has no runtime dependency on Workshop and does not import its implementation. This keeps server, transport, credentials, and protocol DTOs outside Waystone's browser graph.
+Workshop is an exact optional peer and has no runtime import in Waystone's browser output. Server, transport, credentials, and protocol implementation stay outside Waystone.

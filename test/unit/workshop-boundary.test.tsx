@@ -10,8 +10,8 @@ import { createFakeWorkshopClient } from '../fixtures/fake-workshop-client.js';
 describe('Workshop named-operation boundary', () => {
   it('routes search and hydration only through operation names', async () => {
     const { client, calls } = createFakeWorkshopClient({
-      'search.query': fixtureSearchPage,
-      'search.hydrate': { id: 'Q1' },
+      search: fixtureSearchPage,
+      search_hydrate: { id: 'Q1' },
     });
     render(<UnifiedSearchScreen client={client} initialQuery="research" />);
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
@@ -21,8 +21,8 @@ describe('Workshop named-operation boundary', () => {
     );
     await screen.findByText(/hydrated by Workshop/i);
     expect(calls.map((call) => call.name)).toEqual([
-      'search.query',
-      'search.hydrate',
+      'search',
+      'search_hydrate',
     ]);
     expect(calls[0]?.input).toMatchObject({
       text: 'research',
@@ -41,11 +41,11 @@ describe('Workshop named-operation boundary', () => {
   it('forwards abort signals without creating transport state', async () => {
     const controller = new AbortController();
     const { client, calls } = createFakeWorkshopClient({
-      'memory.get': { slug: 'one' },
+      get_memory: { slug: 'one' },
     });
     await callWorkshop(
       client,
-      'memory.get',
+      'get_memory',
       { slug: 'one' },
       {
         signal: controller.signal,
@@ -56,8 +56,8 @@ describe('Workshop named-operation boundary', () => {
 
   it('validates then queries SPARQL through named operations', async () => {
     const { client, calls } = createFakeWorkshopClient({
-      'sparql.validate': { valid: true, issues: [] },
-      'sparql.query': {
+      validate_sparql: { valid: true, issues: [] },
+      query_sparql: {
         kind: 'boolean',
         value: true,
       },
@@ -66,8 +66,8 @@ describe('Workshop named-operation boundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run query' }));
     expect(await screen.findByText(/ASK result/i)).toBeInTheDocument();
     expect(calls.map((call) => call.name)).toEqual([
-      'sparql.validate',
-      'sparql.query',
+      'validate_sparql',
+      'query_sparql',
     ]);
   });
 

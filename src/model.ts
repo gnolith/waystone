@@ -1,27 +1,19 @@
 import type { ReactNode } from 'react';
+import type {
+  WorkshopCallOptions,
+  WorkshopClient,
+} from '@gnolith/workshop/client';
+import type { WorkshopError } from '@gnolith/workshop/protocol';
 
 /**
  * Waystone owns view models only. Canonical operation inputs and outputs belong
  * to Workshop and cross this package boundary through WorkshopClient.call().
  */
-export interface WorkshopClient {
-  call<Name extends string, Input = undefined, Output = unknown>(
-    name: Name,
-    input: Input,
-    options?: WorkshopCallOptions,
-  ): Promise<Output>;
-}
+export type { WorkshopCallOptions, WorkshopClient };
 
-export interface WorkshopCallOptions {
-  signal?: AbortSignal;
-}
-
-export interface WorkshopRequestErrorLike extends Error {
-  code: string;
-  status?: number;
-  requestId?: string;
-  issues?: readonly unknown[];
-}
+export type WorkshopRequestErrorLike = Error &
+  Pick<WorkshopError, 'code'> &
+  Partial<Pick<WorkshopError, 'status' | 'details'>>;
 
 export type EntityId = `Q${number}` | `P${number}`;
 export type EntityType = 'item' | 'property';
@@ -360,6 +352,7 @@ export type TaskStateView = 'unclaimed' | 'claimed' | 'completed' | 'archived';
 
 export interface TaskLeaseView {
   ownerPrincipalId?: string;
+  leaseToken?: string;
   claimedAt?: string;
   expiresAt?: string;
   expired?: boolean;

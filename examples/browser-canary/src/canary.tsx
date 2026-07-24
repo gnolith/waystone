@@ -9,12 +9,9 @@ import { WaystoneApplicationShell } from '@gnolith/waystone/site';
 import { waystoneAssetManifest } from '@gnolith/waystone/assets';
 
 const client: WorkshopClient = {
-  async call<Name extends string, Input, Output>(
-    name: Name,
-    _input: Input,
-  ): Promise<Output> {
+  async call(name) {
     let value: unknown;
-    if (name === 'installation.readiness')
+    if (name === 'gnolith_status')
       value = {
         authenticated: true,
         authorized: true,
@@ -22,13 +19,13 @@ const client: WorkshopClient = {
         semanticConfigured: false,
         semanticReady: false,
       };
-    else if (name === 'task.list') value = [];
-    else if (name === 'search.query') value = { results: [] };
+    else if (name === 'list_tasks') value = { items: [], cursor: null };
+    else if (name === 'search') value = { results: [] };
     else
       throw Object.assign(new Error('Unsupported canary operation.'), {
         code: 'validation_failed',
       });
-    return value as Output;
+    return value as never;
   },
 };
 

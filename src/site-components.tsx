@@ -114,7 +114,11 @@ export function ResourceScreen({
     <>
       <ResourceView resource={resource} />
       <ResourceEditor client={client} resource={resource} />
-      <ResourcePayloadPreview client={client} resourceId={resource.id} />
+      <ResourcePayloadPreview
+        client={client}
+        resourceId={resource.id}
+        revision={resource.revision}
+      />
     </>
   );
 }

@@ -63,7 +63,7 @@ writeFileSync(
       commit,
       publicExports: Object.keys(manifest.exports).sort(),
       operationCatalogDigest:
-        '51431fef2811f73c9cbe9b30083660a42c091aeb5b6eca952cd89d5bbfd34f61',
+        '577cc1de501b0ae3556eb1d32e7dd516c70a09c5b6226d671cec312068fba3dd',
       removedBoundaries: [
         'authentication and token storage',
         'canonical DTO adapters',
@@ -96,11 +96,17 @@ writeFileSync(
       version: manifest.version,
       commit,
       workshop: {
-        intendedRange: manifest.peerDependencies['@gnolith/workshop'],
-        exactCoordinate: null,
-        catalogDigest: null,
-        blocker:
-          'Awaiting the exact Workshop named-operation candidate archive and protocol identity.',
+        exactCoordinate: '@gnolith/workshop@0.5.0',
+        commit: '799c37dd2a0f8aeffb20f8f29ebdde67bd83caf7',
+        tree: 'c765b0f273fd552f03800b9699fc539763322d48',
+        archiveSha256:
+          '477ce5b388aa75f4d451555341fbdd7cc74092d90256de2ec6ae054aff019b70',
+        integrity:
+          'sha512-U9sT0rH0mLCDapg0l8JGr0Cwj9moQzQ9Zw2IAD1hol1YKSU5KCrzqLx3ulDnoKK0vPFVgm5w+wVJzXr2Fl7RVQ==',
+        schemaVersion: 9,
+        operationSchemaVersion: 1,
+        catalogDigest:
+          '577cc1de501b0ae3556eb1d32e7dd516c70a09c5b6226d671cec312068fba3dd',
       },
       files: checksums,
     },

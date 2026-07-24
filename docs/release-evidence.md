@@ -12,7 +12,7 @@ Local candidate gate:
 - exact packed browser bundle/render consumer: pass
 - strict packed TS/TSX declaration consumer across all public entries: pass
 - server-safe/runtime graph, tarball, asset/JCS, SBOM, boundary, and bundle budgets: pass
-- Workshop operation catalog structural fixture: pass at digest `51431fef2811f73c9cbe9b30083660a42c091aeb5b6eca952cd89d5bbfd34f61`
+- exact packed `@gnolith/workshop@0.5.0`, schema 9, and 51-operation catalog: pass at digest `577cc1de501b0ae3556eb1d32e7dd516c70a09c5b6226d671cec312068fba3dd`
 
 Repository preflight:
 
@@ -22,4 +22,4 @@ Repository preflight:
 - dependency updates/review and pinned CodeQL workflows: present
 - latest public npm package has provenance attestations
 
-Blocking release handoff: the exact Workshop architecture-reset coordinate, archive checksum/integrity, and published protocol catalog identity have not been supplied. The structural fixture is test-only and cannot authorize publication.
+Workshop binding: commit `799c37dd2a0f8aeffb20f8f29ebdde67bd83caf7`, tree `c765b0f273fd552f03800b9699fc539763322d48`, archive SHA-256 `477ce5b388aa75f4d451555341fbdd7cc74092d90256de2ec6ae054aff019b70`.
