@@ -1,16 +1,16 @@
 {
   "package": "@gnolith/workshop",
   "version": "0.5.0",
-  "commit": "66214d4cfb1072ad794e9f2c29acbac06ae52048",
-  "tree": "f19e06d748acf98cdd79d7892544fca2dd76289a",
+  "commit": "1140631d7908920b2dc47d1baf3c729d25a4a409",
+  "tree": "4857f2d941a64a1d26af2a12383066149edbd3fe",
   "archive": "test/fixtures/gnolith-workshop-0.5.0.tgz",
-  "archiveBytes": 264905,
-  "archiveSha256": "f4b203a4c8606bc732ad4b859249b2d5eb63f8993435cb5f07100d401076e3c8",
-  "integrity": "sha512-SlhKGN1Fp6WLVcralOaTYpSGowFvKHVq9so7mQzH5ViFtVKHZmhQhInuyPsYSRK+GEdZlM7Da1jMhqBJ8zBhPA==",
-  "sbomSha256": "47a06c39bb301bb5718f48e6ba58f5639afc383de736b663fd47130438f52c3c",
+  "archiveBytes": 267075,
+  "archiveSha256": "6d297b644b38aaacabb606521a916013ba61c0c7ebb5a0c7980f304caadefa77",
+  "integrity": "sha512-kO9l/nW90hLcSxyzu04ZASoEPwHpWIwVI3fqg1jlwB7SWjaprNxTyvhi9p9cydMiTaGT8Nda3Cc6v8pq0Vdz2g==",
+  "sbomSha256": "cf86bf498124f0bf9a2a37ea1c22c4a13b0d9e299d9673bd55ff79e0959cdae4",
   "schemaVersion": 11,
   "operationSchemaVersion": 2,
   "operationCount": 52,
-  "catalogDigest": "a57799a792a075a5e359567240a7241a48df4155fae3a9e73b092ccf9035955b",
+  "catalogDigest": "7a66ccb7ed6c5ae33be526a318376b895d2ecb122d7e723fb3117baf8ad66224",
   "assetPrefix": "/app"
 }

@@ -10,6 +10,6 @@ Source ownership:
 - `site-components.tsx`: route-free screen composition.
 - `test/fixtures/fake-workshop-client.ts`: test-only client.
 
-The candidate binds `@gnolith/workshop@0.5.0`, commit `66214d4cfb1072ad794e9f2c29acbac06ae52048`, archive SHA-256 `f4b203a4c8606bc732ad4b859249b2d5eb63f8993435cb5f07100d401076e3c8`, schema 11, the 52-operation catalog digest `a57799a792a075a5e359567240a7241a48df4155fae3a9e73b092ccf9035955b`, and the canonical verified asset prefix `/app`.
+The candidate binds `@gnolith/workshop@0.5.0`, commit `1140631d7908920b2dc47d1baf3c729d25a4a409`, archive SHA-256 `6d297b644b38aaacabb606521a916013ba61c0c7ebb5a0c7980f304caadefa77`, schema 11, the 52-operation catalog digest `7a66ccb7ed6c5ae33be526a318376b895d2ecb122d7e723fb3117baf8ad66224`, and the canonical verified asset prefix `/app`.
 
 Candidate artifacts contain the packed tarball, CycloneDX SBOM, immutable CSS asset/manifest, checksums, commit identity, and the unresolved binding field.
