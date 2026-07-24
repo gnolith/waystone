@@ -19,7 +19,7 @@ Repository preflight:
 - public GitHub repository: confirmed
 - protected `main`, strict required checks, linear history, no force push/deletion, admin enforcement, conversation resolution: confirmed
 - secret scanning and push protection: enabled
-- dependency updates/review and pinned CodeQL workflows: present
+- dependency updates/review and repository default CodeQL scanning: present
 - latest public npm package has provenance attestations
 
 Workshop binding: protected-main commit `10ce0e1ae441094b28e61ad2772e10e1b391a464`, tree `9e4cd3270b38c89acdebac6b592862692e3c75d2`, 273978-byte archive SHA-256 `6479db87d6c2529b4a5c9e5063cc705f8f2aa3057ae4c7d5a0668e36e48163e4`, integrity `sha512-Z0EKHsceaZsDCwcwjVZm75uUeosRj7V1WPTPVejqToRNjepITYbGWYb5KKozVDTKmOTJS70NkxM6cZZIFGQLsQ==`, SBOM SHA-256 `27aef7d6ae4a0b82a044bfde2d055d32380928dedc08428c9ffeed77574b8658`, inventory SHA-256 `b586c25337a5b5035ef4eaab80efe043ac728c970f1109327d17ad8be1e40d90`, and Workshop checksum-manifest SHA-256 `bd4650b53f23e5ea468a84acedc7d0ce7a92c25eb7a46f2af4a05c96be94d29f`.
