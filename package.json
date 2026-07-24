@@ -123,6 +123,9 @@
     "typescript-eslint": "^8.64.0",
     "vitest": "^3.2.4"
   },
+  "overrides": {
+    "glob@10.5.0": "13.0.6"
+  },
   "keywords": [
     "gnolith",
     "research",

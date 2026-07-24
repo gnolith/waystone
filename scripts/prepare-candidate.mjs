@@ -63,7 +63,7 @@ writeFileSync(
       commit,
       publicExports: Object.keys(manifest.exports).sort(),
       operationCatalogDigest:
-        '7a66ccb7ed6c5ae33be526a318376b895d2ecb122d7e723fb3117baf8ad66224',
+        'af455b4d6ab3560bca9c0ab48e9db7bd3cbcfa166ace875578d88d182069071f',
       workshopAssetPrefix: '/app',
       removedBoundaries: [
         'authentication and token storage',
@@ -98,18 +98,23 @@ writeFileSync(
       commit,
       workshop: {
         exactCoordinate: '@gnolith/workshop@0.5.0',
-        commit: '13db3690053bea331d341f6f848d2641441ecc0c',
-        tree: 'fd9078f4c5a66904965cf9dc003431362a403b96',
+        commit: '10ce0e1ae441094b28e61ad2772e10e1b391a464',
+        tree: '9e4cd3270b38c89acdebac6b592862692e3c75d2',
+        archiveBytes: 273978,
         archiveSha256:
-          '1a59399eb253b7085d581726f3e9314ecbe5c52f4780fb14e43df1af8df484b3',
+          '6479db87d6c2529b4a5c9e5063cc705f8f2aa3057ae4c7d5a0668e36e48163e4',
         integrity:
-          'sha512-3+Xa7ZpNIA1FCyYE9Rm/zIJXYETGjtWejDs337it4PL/S/sGkTFy/JlW1ZARwNFuU5+S9b7h0yg1+x83NhvvpA==',
+          'sha512-Z0EKHsceaZsDCwcwjVZm75uUeosRj7V1WPTPVejqToRNjepITYbGWYb5KKozVDTKmOTJS70NkxM6cZZIFGQLsQ==',
         sbomSha256:
-          '1e8d9adf76644a82c0bfa5ee07e30ff4fa418ebad4bf564b3b60077b3c7d4b0e',
+          '27aef7d6ae4a0b82a044bfde2d055d32380928dedc08428c9ffeed77574b8658',
+        inventorySha256:
+          'b586c25337a5b5035ef4eaab80efe043ac728c970f1109327d17ad8be1e40d90',
+        checksumManifestSha256:
+          'bd4650b53f23e5ea468a84acedc7d0ce7a92c25eb7a46f2af4a05c96be94d29f',
         schemaVersion: 11,
         operationSchemaVersion: 2,
         catalogDigest:
-          '7a66ccb7ed6c5ae33be526a318376b895d2ecb122d7e723fb3117baf8ad66224',
+          'af455b4d6ab3560bca9c0ab48e9db7bd3cbcfa166ace875578d88d182069071f',
         assetPrefix: '/app',
       },
       files: checksums,
