@@ -29,7 +29,10 @@ if (
   identity.version !== '0.5.0' ||
   !identity.archiveSha256 ||
   !identity.catalogDigest ||
-  identity.schemaVersion !== 9
+  identity.schemaVersion !== 11 ||
+  identity.operationSchemaVersion !== 2 ||
+  identity.operationCount !== 52 ||
+  identity.assetPrefix !== '/app'
 )
   failures.push(
     'Exact Workshop release coordinate, archive SHA-256, and published catalog identity are not bound.',

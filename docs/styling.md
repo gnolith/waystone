@@ -2,6 +2,8 @@
 
 Import `@gnolith/waystone/styles.css` once. The stylesheet is compiled and does not require Tailwind source scanning. It scopes structural rules beneath `.ws-shell` and does not install a global reset.
 
+For Workshop-hosted deployments, use the immutable `@gnolith/waystone/assets` manifest and Workshop's canonical verified mount prefix `/app`.
+
 Stable host-customizable tokens are:
 
 - `--ws-color-bg`, `--ws-color-surface`, `--ws-color-surface-raised`

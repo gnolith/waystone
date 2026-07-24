@@ -1,5 +1,6 @@
 [
   "gnolith_status",
+  "authorization_admin",
   "search",
   "search_hydrate",
   "search_admin",

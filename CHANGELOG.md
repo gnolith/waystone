@@ -9,7 +9,7 @@ All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.
 ### Changed
 
 - Reset Waystone to a browser-only UI consumer of Workshop named operations.
-- Bound public client/error types and all UI calls to the exact generated `@gnolith/workshop@0.5.0` schema and 51-operation catalog.
+- Bound public client/error types and all UI calls to the exact generated `@gnolith/workshop@0.5.0` schema-11, 52-operation catalog and verified `/app` asset contract.
 - Replaced route, transport, authentication, server-error, and canonical DTO ownership with the structural `client.call(name, input, { signal })` boundary.
 - Added complete accessible search, knowledge-content, Task lifecycle, readiness, SPARQL, and search-administration UI with explicit degraded and conflict states.
 - Replaced executable plugins with validated static UI declarations.

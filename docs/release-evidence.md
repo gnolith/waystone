@@ -12,7 +12,7 @@ Local candidate gate:
 - exact packed browser bundle/render consumer: pass
 - strict packed TS/TSX declaration consumer across all public entries: pass
 - server-safe/runtime graph, tarball, asset/JCS, SBOM, boundary, and bundle budgets: pass
-- exact packed `@gnolith/workshop@0.5.0`, schema 9, and 51-operation catalog: pass at digest `577cc1de501b0ae3556eb1d32e7dd516c70a09c5b6226d671cec312068fba3dd`
+- exact packed `@gnolith/workshop@0.5.0`, schema 11, operation schema 2, 52-operation catalog, and verified `/app` asset mount: pass at digest `a57799a792a075a5e359567240a7241a48df4155fae3a9e73b092ccf9035955b`
 
 Repository preflight:
 
@@ -22,4 +22,4 @@ Repository preflight:
 - dependency updates/review and pinned CodeQL workflows: present
 - latest public npm package has provenance attestations
 
-Workshop binding: commit `c2e345c0b287af7c8622e226943af83a11a33ac7`, tree `fbf15a852ee20d4dedabc6cfcb3403bb6419520d`, archive SHA-256 `477ce5b388aa75f4d451555341fbdd7cc74092d90256de2ec6ae054aff019b70`, SBOM SHA-256 `1483b5ff63ab9c74b3bd21fd992149c5c41fd255bce0def06f23c63b3f90d750`.
+Workshop binding: commit `abbdb1c3f07d8466883c9f00ad3927c81ca78769`, tree `cff0dc55ebd2793ef5b64cc08ecdaad1a52ef6b1`, archive SHA-256 `6d466fa1f91ba93efe070dada9ad8b1e14bde6b4d9cc7e94bdefcb3f25fe95d4`, SBOM SHA-256 `2703fa8ab37439b8fdac1d624bd2b57d0d325ef48b8b87847fb9f50b8b586b68`.
