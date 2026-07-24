@@ -98,14 +98,14 @@ writeFileSync(
       commit,
       workshop: {
         exactCoordinate: '@gnolith/workshop@0.5.0',
-        commit: '1140631d7908920b2dc47d1baf3c729d25a4a409',
-        tree: '4857f2d941a64a1d26af2a12383066149edbd3fe',
+        commit: '423f3a75fe4ee197727866be7c9c6667720cd862',
+        tree: '89ebeff9da51511a2de694e1e1fd559143cc16ad',
         archiveSha256:
           '6d297b644b38aaacabb606521a916013ba61c0c7ebb5a0c7980f304caadefa77',
         integrity:
           'sha512-kO9l/nW90hLcSxyzu04ZASoEPwHpWIwVI3fqg1jlwB7SWjaprNxTyvhi9p9cydMiTaGT8Nda3Cc6v8pq0Vdz2g==',
         sbomSha256:
-          'cf86bf498124f0bf9a2a37ea1c22c4a13b0d9e299d9673bd55ff79e0959cdae4',
+          '3656f30a0be09cd94d99c1fd5eca0bf807da618d00464500c507a2029a0685eb',
         schemaVersion: 11,
         operationSchemaVersion: 2,
         catalogDigest:
