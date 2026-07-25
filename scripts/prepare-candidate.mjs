@@ -98,19 +98,19 @@ writeFileSync(
       commit,
       workshop: {
         exactCoordinate: '@gnolith/workshop@0.5.0',
-        commit: '10ce0e1ae441094b28e61ad2772e10e1b391a464',
-        tree: '9e4cd3270b38c89acdebac6b592862692e3c75d2',
-        archiveBytes: 273978,
+        commit: '66c923f9505359ee7ae92ca48beddd044d2bb036',
+        tree: 'fa55f0c8bce7a77945626f177a7759e903d7f59b',
+        archiveBytes: 274551,
         archiveSha256:
-          '6479db87d6c2529b4a5c9e5063cc705f8f2aa3057ae4c7d5a0668e36e48163e4',
+          '5b266e029201e0eba33d497212b9f80c4b6821731efe289189d547c626f8d44c',
         integrity:
-          'sha512-Z0EKHsceaZsDCwcwjVZm75uUeosRj7V1WPTPVejqToRNjepITYbGWYb5KKozVDTKmOTJS70NkxM6cZZIFGQLsQ==',
+          'sha512-4DwTKaR/cObyGvNEUmQ0a7VzRU4oA2Ma5fO4IM2on+B8LOst0bAdeSLZvYqHl7rDblfgZyOG0OFBtlM9AKcnGw==',
         sbomSha256:
-          '27aef7d6ae4a0b82a044bfde2d055d32380928dedc08428c9ffeed77574b8658',
+          'd5b003a1d0249b593eabf54d1e0c5ac4f3b5279bc2596b1b940cb6413a3d38f4',
         inventorySha256:
-          'b586c25337a5b5035ef4eaab80efe043ac728c970f1109327d17ad8be1e40d90',
+          '51107a743f2410c0621247df1e1db9cf0e2d6b43e4c4b3c9a91b2c63faa388bb',
         checksumManifestSha256:
-          'bd4650b53f23e5ea468a84acedc7d0ce7a92c25eb7a46f2af4a05c96be94d29f',
+          'e0741eefd87e3326e2022265b5016a911fc179d3b8485d2241fa465d09c482c3',
         schemaVersion: 11,
         operationSchemaVersion: 2,
         catalogDigest:
