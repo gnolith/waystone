@@ -1,5 +1,7 @@
 # Waystone
 
+> **Retired.** Active use of this repository has ended.
+
 Waystone is the accessible React UI package for Gnolith. It is intentionally a browser-only consumer of a Workshop client:
 
 ```ts
